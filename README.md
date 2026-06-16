@@ -1,4 +1,7 @@
-# ai-website
+# NeuroSite
+<img width="1254" height="1254" alt="image" src="https://github.com/user-attachments/assets/fa26102d-8771-410d-be1c-31ccceb9463d" />
+
+**От идеи до сайта за минуты. \\  From idea to website in minutes.**
 
 ИИ-конструктор веб-сайтов, который генерирует структуру, тексты и дизайн лендинга по текстовому описанию пользователя.
 
