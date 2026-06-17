@@ -1,4 +1,4 @@
-# hggps
+# HGGps
 <img width="1254" height="1254" alt="image" src="https://github.com/user-attachments/assets/030c9295-e689-4cf4-90a8-066922920ff2" />
 
 
