@@ -20,7 +20,7 @@ def build_sitemap_prompt(description: str, site_type: str, goal: str, style: str
   ]
 }"""
     
-    prompt = f"""Ты — AI website planner для сервиса NeuroSite.
+    prompt = f"""Ты — AI website planner для сервиса HGGps.
 
 Твоя задача — создать карту сайта по описанию пользователя.
 
