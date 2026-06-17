@@ -1,5 +1,6 @@
-# NeuroSite
-<img width="1254" height="1254" alt="image" src="https://github.com/user-attachments/assets/fa26102d-8771-410d-be1c-31ccceb9463d" />
+# hggps
+<img width="1254" height="1254" alt="image" src="https://github.com/user-attachments/assets/030c9295-e689-4cf4-90a8-066922920ff2" />
+
 
 **От идеи до сайта за минуты. \\  From idea to website in minutes.**
 
