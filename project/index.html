@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HGGps — ИИ-конструктор сайтов</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<header class="header">
+  <div class="logo">HGGps</div>
+
+  <nav class="nav">
+    <a href="#create">Создать сайт</a>
+    <a href="#features">Возможности</a>
+    <a href="#preview">Предпросмотр</a>
+  </nav>
+
+  <a href="#create" class="header-btn">Начать</a>
+</header>
+
+<main>
+
+  <section class="hero">
+    <div class="hero-text">
+      <span class="tag">AI Website Builder</span>
+
+      <h1>Создавай сайты с помощью искусственного интеллекта</h1>
+
+      <p>
+        Опиши свой проект, выбери тип сайта, цель и стиль.
+        HGGps поможет быстро собрать структуру, тексты и базовый дизайн сайта.
+      </p>
+
+      <div class="hero-buttons">
+        <a href="#create" class="btn primary">Создать сайт</a>
+        <a href="#preview" class="btn secondary">Посмотреть пример</a>
+      </div>
+    </div>
+
+    <div class="hero-card">
+      <div class="browser-top">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+
+      <div class="mock-site">
+        <div class="mock-banner"></div>
+        <div class="mock-line big"></div>
+        <div class="mock-line"></div>
+        <div class="mock-line small"></div>
+
+        <div class="mock-grid">
+          <div></div>
+          <div></div>
+          <div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="create" id="create">
+    <div class="section-title">
+      <h2>Создание сайта</h2>
+      <p>Заполни форму, чтобы система поняла, какой сайт нужно сделать.</p>
+    </div>
+
+    <div class="form-card">
+      <label>Описание проекта</label>
+      <textarea
+        id="description"
+        placeholder="Например: сайт для кофейни, где можно посмотреть меню, адрес и акции"
+      ></textarea>
+
+      <div class="form-grid">
+        <div>
+          <label>Тип сайта</label>
+          <select id="siteType">
+            <option value="landing">Лендинг</option>
+            <option value="multi_page">Многостраничный сайт</option>
+            <option value="portfolio">Портфолио</option>
+            <option value="event">Сайт мероприятия</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Цель сайта</label>
+          <select id="goal">
+            <option value="sales">Продажи</option>
+            <option value="info">Информация</option>
+            <option value="leads">Заявки</option>
+            <option value="presentation">Презентация проекта</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Стиль</label>
+          <select id="style">
+            <option value="modern">Современный</option>
+            <option value="minimal">Минимализм</option>
+            <option value="business">Деловой</option>
+            <option value="creative">Креативный</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="btn primary full" type="button" onclick="generateSite()">
+        Сгенерировать сайт
+      </button>
+
+      <div id="generation-result"></div>
+    </div>
+  </section>
+
+  <section class="features" id="features">
+    <div class="section-title">
+      <h2>Что умеет HGGps</h2>
+      <p>Основные функции для первой версии проекта.</p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <span>01</span>
+        <h3>Карта сайта</h3>
+        <p>Система предлагает страницы и блоки будущего сайта.</p>
+      </div>
+
+      <div class="feature-card">
+        <span>02</span>
+        <h3>Генерация текстов</h3>
+        <p>ИИ помогает создать заголовки, описания и тексты.</p>
+      </div>
+
+      <div class="feature-card">
+        <span>03</span>
+        <h3>Предпросмотр</h3>
+        <p>Пользователь сразу видит пример готового сайта.</p>
+      </div>
+
+      <div class="feature-card">
+        <span>04</span>
+        <h3>Редактирование</h3>
+        <p>Можно менять тексты и структуру сайта.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="preview" id="preview">
+    <div class="section-title">
+      <h2>Пример результата</h2>
+      <p>Так может выглядеть сайт после генерации.</p>
+    </div>
+
+    <div class="preview-layout">
+      <div class="sitemap">
+        <h3>Карта сайта</h3>
+
+        <div class="page active">
+          <strong>Главная</strong>
+          <p>Hero, преимущества, контакты</p>
+        </div>
+
+        <div class="page">
+          <strong>О проекте</strong>
+          <p>Описание, команда, цели</p>
+        </div>
+
+        <div class="page">
+          <strong>Услуги</strong>
+          <p>Карточки, цены, заявка</p>
+        </div>
+
+        <div class="page">
+          <strong>Контакты</strong>
+          <p>Адрес, форма, соцсети</p>
+        </div>
+      </div>
+
+      <div class="site-preview">
+        <div class="browser-top">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+
+        <div class="preview-content">
+          <div class="preview-hero">
+            <h3>Сайт для вашего проекта</h3>
+            <p>Краткое описание компании, услуги или идеи.</p>
+            <button>Оставить заявку</button>
+          </div>
+
+          <div class="preview-blocks">
+            <div></div>
+            <div></div>
+            <div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <p>HGGps © 2026 — учебный проект ИИ-конструктора сайтов</p>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
