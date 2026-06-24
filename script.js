@@ -1,4 +1,4 @@
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = "https://ai-website-exwx.onrender.com";
 
 async function generateSite() {
   const description = document.getElementById("description").value.trim();
