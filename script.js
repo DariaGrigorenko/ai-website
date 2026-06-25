@@ -388,7 +388,7 @@ ${state.layoutText}
     publicLinkBox.innerHTML = `
       <strong>Ссылку создать не удалось</strong>
       <p>
-        Проверь, что backend запущен по адресу ${API_URL}.
+        Backend серверу не удалось обработать запрос.
       </p>
     `;
 
