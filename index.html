@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HGGps — ИИ-конструктор сайтов</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -12,47 +12,44 @@
   <div class="logo">HGGps</div>
 
   <nav class="nav">
-    <a href="#create">Создать сайт</a>
-    <a href="#features">Возможности</a>
+    <a href="#constructor">Конструктор</a>
     <a href="#preview">Предпросмотр</a>
   </nav>
 
-  <a href="#create" class="header-btn">Начать</a>
+  <button class="theme-toggle" id="themeToggle">Светлая тема</button>
 </header>
 
-<main>
+<main class="container">
 
   <section class="hero">
     <div class="hero-text">
-      <span class="tag">AI Website Builder</span>
+      <span class="badge">AI Website Builder</span>
 
-      <h1>Создавай сайты с помощью искусственного интеллекта</h1>
+      <h1>Поэтапное создание сайта с помощью ИИ</h1>
 
       <p>
-        Опиши свой проект, выбери тип сайта, цель и стиль.
-        HGGps поможет быстро собрать структуру, тексты и базовый дизайн сайта.
+        HGGps создаёт сайт по шагам: сначала читает описание проекта,
+        затем помогает настроить фон, разместить кнопки и блоки,
+        добавить информацию и получить ссылку на финальный сайт.
       </p>
 
-      <div class="hero-buttons">
-        <a href="#create" class="btn primary">Создать сайт</a>
-        <a href="#preview" class="btn secondary">Посмотреть пример</a>
-      </div>
+      <a href="#constructor" class="btn btn-primary">Начать создание</a>
     </div>
 
     <div class="hero-card">
-      <div class="browser-top">
+      <div class="window-top">
         <span></span>
         <span></span>
         <span></span>
       </div>
 
-      <div class="mock-site">
-        <div class="mock-banner"></div>
-        <div class="mock-line big"></div>
-        <div class="mock-line"></div>
-        <div class="mock-line small"></div>
+      <div class="hero-preview">
+        <div class="hero-preview-banner"></div>
+        <div class="hero-line large"></div>
+        <div class="hero-line"></div>
+        <div class="hero-line small"></div>
 
-        <div class="mock-grid">
+        <div class="hero-grid">
           <div></div>
           <div></div>
           <div></div>
@@ -61,151 +58,166 @@
     </div>
   </section>
 
-  <section class="create" id="create">
+  <section class="section" id="constructor">
     <div class="section-title">
-      <h2>Создание сайта</h2>
-      <p>Заполни форму, чтобы система поняла, какой сайт нужно сделать.</p>
+      <h2>Конструктор сайта</h2>
+      <p>Заполняй этапы по очереди и смотри, как сайт собирается постепенно.</p>
     </div>
 
-    <div class="form-card">
-      <label>Описание проекта</label>
-      <textarea
-        id="description"
-        placeholder="Например: сайт для кофейни, где можно посмотреть меню, адрес и акции"
-      ></textarea>
+    <div class="steps">
+      <div class="step active" id="step1Indicator">1. Описание</div>
+      <div class="step" id="step2Indicator">2. Фон</div>
+      <div class="step" id="step3Indicator">3. Блоки</div>
+      <div class="step" id="step4Indicator">4. Информация</div>
+      <div class="step" id="step5Indicator">5. Ссылка</div>
+    </div>
 
-      <div class="form-grid">
-        <div>
-          <label>Тип сайта</label>
+    <div class="constructor-layout">
+
+      <div class="panel">
+
+        <div class="stage active" id="stage1">
+          <h3>Шаг 1. Описание проекта</h3>
+          <p class="stage-description">
+            Сначала сайт читает описание проекта и понимает, какой сайт нужно создать.
+          </p>
+
+          <label for="projectDescription">Описание проекта</label>
+          <textarea id="projectDescription" placeholder="Например: сайт для кофейни в Москве, где можно посмотреть меню, адрес, акции и оставить заявку"></textarea>
+
+          <label for="siteType">Тип сайта</label>
           <select id="siteType">
-            <option value="landing">Лендинг</option>
-            <option value="multi_page">Многостраничный сайт</option>
-            <option value="portfolio">Портфолио</option>
-            <option value="event">Сайт мероприятия</option>
+            <option>Лендинг</option>
+            <option>Многостраничный сайт</option>
+            <option>Портфолио</option>
+            <option>Сайт мероприятия</option>
           </select>
+
+          <button class="btn btn-primary full-width" id="analyzeProjectBtn">
+            Прочитать описание
+          </button>
         </div>
 
-        <div>
-          <label>Цель сайта</label>
-          <select id="goal">
-            <option value="sales">Продажи</option>
-            <option value="info">Информация</option>
-            <option value="leads">Заявки</option>
-            <option value="presentation">Презентация проекта</option>
+        <div class="stage" id="stage2">
+          <h3>Шаг 2. Настройка фона</h3>
+          <p class="stage-description">
+            Теперь пользователь описывает, каким должен быть фон сайта, и оценивает результат.
+          </p>
+
+          <label for="backgroundDescription">Как должен выглядеть фон?</label>
+          <textarea id="backgroundDescription" placeholder="Например: тёмный фон, красный градиент, строгий стиль, без лишних деталей"></textarea>
+
+          <label for="backgroundStyle">Вариант фона</label>
+          <select id="backgroundStyle">
+            <option value="dark-red">Тёмный красный градиент</option>
+            <option value="minimal-light">Светлый минимализм</option>
+            <option value="business-dark">Деловой тёмный фон</option>
+            <option value="creative">Креативный контрастный фон</option>
           </select>
+
+          <button class="btn btn-primary full-width" id="generateBackgroundBtn">
+            Сгенерировать фон
+          </button>
+
+          <div class="rating-row" id="backgroundRating">
+            <button class="small-btn" id="likeBackgroundBtn">Фон нравится</button>
+            <button class="small-btn secondary-small" id="remakeBackgroundBtn">Переделать фон</button>
+          </div>
         </div>
 
-        <div>
-          <label>Стиль</label>
-          <select id="style">
-            <option value="modern">Современный</option>
-            <option value="minimal">Минимализм</option>
-            <option value="business">Деловой</option>
-            <option value="creative">Креативный</option>
+        <div class="stage" id="stage3">
+          <h3>Шаг 3. Размещение кнопок и блоков</h3>
+          <p class="stage-description">
+            Пользователь выбирает, где будут находиться основные блоки и кнопки.
+          </p>
+
+          <label for="layoutType">Расположение блоков</label>
+          <select id="layoutType">
+            <option value="center">Центрированное размещение</option>
+            <option value="left">Текст слева, блоки справа</option>
+            <option value="cards">Карточки под главным блоком</option>
           </select>
+
+          <label for="buttonPlace">Где разместить главную кнопку?</label>
+          <select id="buttonPlace">
+            <option value="under-title">Под главным текстом</option>
+            <option value="center">По центру экрана</option>
+            <option value="bottom">В нижней части первого блока</option>
+          </select>
+
+          <button class="btn btn-primary full-width" id="generateLayoutBtn">
+            Разместить блоки и кнопки
+          </button>
+
+          <div class="rating-row" id="layoutRating">
+            <button class="small-btn" id="likeLayoutBtn">Размещение нравится</button>
+            <button class="small-btn secondary-small" id="remakeLayoutBtn">Изменить размещение</button>
+          </div>
         </div>
+
+        <div class="stage" id="stage4">
+          <h3>Шаг 4. Добавление информации</h3>
+          <p class="stage-description">
+            Теперь пользователь добавляет информацию в нужные части сайта.
+          </p>
+
+          <label for="mainTitle">Главный заголовок</label>
+          <input id="mainTitle" type="text" placeholder="Например: Кофейня рядом с вами">
+
+          <label for="mainText">Основное описание</label>
+          <textarea id="mainText" placeholder="Например: Свежий кофе, десерты и уютная атмосфера каждый день"></textarea>
+
+          <label for="buttonText">Текст кнопки</label>
+          <input id="buttonText" type="text" placeholder="Например: Оставить заявку">
+
+          <label for="extraInfo">Дополнительная информация</label>
+          <textarea id="extraInfo" placeholder="Например: адрес, контакты, преимущества, услуги или акции"></textarea>
+
+          <button class="btn btn-primary full-width" id="addContentBtn">
+            Добавить информацию
+          </button>
+        </div>
+
+        <div class="stage" id="stage5">
+          <h3>Шаг 5. Финальный сайт и ссылка</h3>
+          <p class="stage-description">
+            Все этапы завершены. Теперь можно создать публичную ссылку через backend.
+          </p>
+
+          <button class="btn btn-primary full-width" id="createLinkBtn">
+            Создать ссылку на сайт
+          </button>
+
+          <button class="btn btn-secondary full-width" id="restartBtn">
+            Начать заново
+          </button>
+
+          <div id="publicLinkBox" class="public-link-box"></div>
+        </div>
+
       </div>
 
-      <button class="btn primary full" type="button" onclick="generateSite()">
-        Сгенерировать сайт
-      </button>
-
-      <div id="generation-result"></div>
-    </div>
-  </section>
-
-  <section class="features" id="features">
-    <div class="section-title">
-      <h2>Что умеет HGGps</h2>
-      <p>Основные функции для первой версии проекта.</p>
-    </div>
-
-    <div class="features-grid">
-      <div class="feature-card">
-        <span>01</span>
-        <h3>Карта сайта</h3>
-        <p>Система предлагает страницы и блоки будущего сайта.</p>
-      </div>
-
-      <div class="feature-card">
-        <span>02</span>
-        <h3>Генерация текстов</h3>
-        <p>ИИ помогает создать заголовки, описания и тексты.</p>
-      </div>
-
-      <div class="feature-card">
-        <span>03</span>
+      <div class="panel preview-panel" id="preview">
         <h3>Предпросмотр</h3>
-        <p>Пользователь сразу видит пример готового сайта.</p>
-      </div>
 
-      <div class="feature-card">
-        <span>04</span>
-        <h3>Редактирование</h3>
-        <p>Можно менять тексты и структуру сайта.</p>
-      </div>
-    </div>
-  </section>
-
-  <section class="preview" id="preview">
-    <div class="section-title">
-      <h2>Пример результата</h2>
-      <p>Так может выглядеть сайт после генерации.</p>
-    </div>
-
-    <div class="preview-layout">
-      <div class="sitemap">
-        <h3>Карта сайта</h3>
-
-        <div class="page active">
-          <strong>Главная</strong>
-          <p>Hero, преимущества, контакты</p>
-        </div>
-
-        <div class="page">
-          <strong>О проекте</strong>
-          <p>Описание, команда, цели</p>
-        </div>
-
-        <div class="page">
-          <strong>Услуги</strong>
-          <p>Карточки, цены, заявка</p>
-        </div>
-
-        <div class="page">
-          <strong>Контакты</strong>
-          <p>Адрес, форма, соцсети</p>
-        </div>
-      </div>
-
-      <div class="site-preview">
-        <div class="browser-top">
-          <span></span>
-          <span></span>
-          <span></span>
-        </div>
-
-        <div class="preview-content">
-          <div class="preview-hero">
-            <h3>Сайт для вашего проекта</h3>
-            <p>Краткое описание компании, услуги или идеи.</p>
-            <button>Оставить заявку</button>
-          </div>
-
-          <div class="preview-blocks">
-            <div></div>
-            <div></div>
-            <div></div>
+        <div class="site-preview" id="sitePreview">
+          <div class="preview-empty">
+            Заполни первый этап, чтобы начать сборку сайта.
           </div>
         </div>
+
+        <div class="status-box" id="statusBox">
+          Текущий этап: ожидание описания проекта.
+        </div>
       </div>
+
     </div>
   </section>
 
 </main>
 
 <footer class="footer">
-  <p>HGGps © 2026 — учебный проект ИИ-конструктора сайтов</p>
+  <p>HGGps © 2026</p>
 </footer>
 
 <script src="script.js"></script>
