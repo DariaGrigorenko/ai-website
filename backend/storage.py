@@ -2,24 +2,24 @@ import json
 from pathlib import Path
 
 
-BASE_DIR = Path(file).resolve().parent
-PROJECTS_FILE = BASE_DIR / "projects.json"
+BASE_DIR = Path(__file__).resolve().parent
+DATA_FILE = BASE_DIR / "projects.json"
 
 
 def load_projects():
-    if not PROJECTS_FILE.exists():
+    if not DATA_FILE.exists():
         return []
 
     try:
-        with open(PROJECTS_FILE, "r", encoding="utf-8") as file:
+        with open(DATA_FILE, "r", encoding="utf-8") as file:
             return json.load(file)
     except json.JSONDecodeError:
         return []
 
 
 def save_projects(projects):
-    with open(PROJECTS_FILE, "w", encoding="utf-8") as file:
-        json.dump(projects, file, ensure_ascii=False, indent=2)
+    with open(DATA_FILE, "w", encoding="utf-8") as file:
+        json.dump(projects, file, ensure_ascii=False, indent=4)
 
 
 def find_project_by_slug(slug):
