@@ -1,28 +1,27 @@
 import json
 import os
-from typing import Any
 
 DATA_FILE = "projects.json"
 
 
-def load_projects() -> list[dict[str, Any]]:
+def load_projects():
     if not os.path.exists(DATA_FILE):
         return []
 
-    with open(DATA_FILE, "r", encoding="utf-8") as file:
-        return json.load(file)
+    with open(DATA_FILE, "r", encoding="utf8") as f:
+        return json.load(f)
 
 
-def save_projects(projects: list[dict[str, Any]]) -> None:
-    with open(DATA_FILE, "w", encoding="utf-8") as file:
-        json.dump(projects, file, ensure_ascii=False, indent=2)
+def save_projects(projects):
+    with open(DATA_FILE, "w", encoding="utf8") as f:
+        json.dump(projects, f, ensure_ascii=False, indent=4)
 
 
-def find_project_by_slug(slug: str) -> dict[str, Any] | None:
+def find_project_by_slug(slug):
     projects = load_projects()
 
     for project in projects:
-        if project.get("publicSlug") == slug:
+        if project["publicSlug"] == slug:
             return project
 
     return None
