@@ -1,15 +1,19 @@
 from datetime import datetime, timedelta
+from html import escape
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from slugify import slugify
 
+from ai_generator import generate_site
 from storage import load_projects, save_projects, find_project_by_slug
 
+
 app = FastAPI(title="HGGps Backend API")
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -21,79 +25,23 @@ app.add_middleware(
 
 
 class GenerateProjectRequest(BaseModel):
-    description: str
-    siteType: str
-    goal: str
-    style: str
+    description: str = Field(..., min_length=10)
+    siteType: str = Field(default="Лендинг")
+    goal: str = Field(default="Создать сайт")
+    style: str = Field(default="Современный")
 
 
-def create_mock_site(description: str, site_type: str, goal: str, style: str) -> dict:
-    return {
-        "siteName": "Сайт для вашего проекта",
-        "siteType": site_type,
-        "goal": goal,
-        "style": style,
-        "pages": [
-            {
-                "title": "Главная",
-                "slug": "/",
-                "type": "home",
-                "sections": [
-                    {
-                        "type": "hero",
-                        "title": "Сайт для вашего проекта",
-                        "subtitle": description,
-                        "buttonText": "Оставить заявку"
-                    },
-                    {
-                        "type": "features",
-                        "title": "Преимущества",
-                        "items": [
-                            "Быстрое создание сайта",
-                            "Понятная структура",
-                            "Готовые тексты"
-                        ]
-                    }
-                ]
-            },
-            {
-                "title": "О проекте",
-                "slug": "/about",
-                "type": "about",
-                "sections": [
-                    {
-                        "type": "text",
-                        "title": "О проекте",
-                        "description": "Этот сайт был создан с помощью HGGps на основе описания пользователя."
-                    }
-                ]
-            },
-            {
-                "title": "Контакты",
-                "slug": "/contact",
-                "type": "contact",
-                "sections": [
-                    {
-                        "type": "contact",
-                        "title": "Контакты",
-                        "phone": "+7 000 000-00-00",
-                        "email": "example@email.com",
-                        "address": "Адрес будет добавлен позже"
-                    }
-                ]
-            }
-        ]
-    }
-
-
-def make_unique_slug(site_name: str) -> str:
+def make_unique_slug(site_name):
     projects = load_projects()
 
     base_slug = slugify(site_name) or "site"
     slug = base_slug
     counter = 1
 
-    existing_slugs = {project.get("publicSlug") for project in projects}
+    existing_slugs = {
+        project.get("publicSlug")
+        for project in projects
+    }
 
     while slug in existing_slugs:
         slug = f"{base_slug}-{counter}"
@@ -102,181 +50,285 @@ def make_unique_slug(site_name: str) -> str:
     return slug
 
 
-def render_site_html(site_json: dict) -> str:
-    site_name = site_json.get("siteName", "Сайт")
+def render_site_html(site_json):
+    site_name = escape(site_json.get("siteName", "Сайт"))
     pages = site_json.get("pages", [])
 
     menu_html = ""
     content_html = ""
 
     for page in pages:
-        title = page.get("title", "Страница")
-        slug = page.get("slug", "/")
-        anchor = slug.replace("/", "") or "home"
+        page_title = escape(page.get("title", "Страница"))
+        page_slug = page.get("slug", "/")
+        anchor = page_slug.replace("/", "") or "home"
 
-        menu_html += f'<a href="#{anchor}">{title}</a>'
+        menu_html += f'<a href="#{escape(anchor)}">{page_title}</a>'
 
-        content_html += f'<section id="{anchor}" class="page-section">'
-        content_html += f"<h2>{title}</h2>"
+        content_html += f'<section id="{escape(anchor)}" class="page-section">'
+        content_html += f"<h2>{page_title}</h2>"
 
-        for section in page.get("sections", []):
+        sections = page.get("sections", [])
+
+        for section in sections:
             section_type = section.get("type")
 
             if section_type == "hero":
+                title = escape(section.get("title", ""))
+                subtitle = escape(section.get("subtitle", ""))
+                button_text = escape(section.get("buttonText", "Подробнее"))
+
                 content_html += f"""
-                <div class="hero">
-                    <h1>{section.get("title", "")}</h1>
-                    <p>{section.get("subtitle", "")}</p>
-                    <button>{section.get("buttonText", "Подробнее")}</button>
+                <div class="hero-block">
+                    <span class="badge">Generated by HGGps</span>
+                    <h1>{title}</h1>
+                    <p>{subtitle}</p>
+                    <button>{button_text}</button>
                 </div>
                 """
 
             elif section_type == "features":
+                title = escape(section.get("title", "Преимущества"))
                 items = section.get("items", [])
-                content_html += f"<div class='card'><h3>{section.get('title', 'Преимущества')}</h3><ul>"
-                for item in items:
-                    content_html += f"<li>{item}</li>"
-                content_html += "</ul></div>"
 
-            elif section_type == "text":
                 content_html += f"""
                 <div class="card">
-                    <h3>{section.get("title", "")}</h3>
-                    <p>{section.get("description", "")}</p>
+                    <h3>{title}</h3>
+                    <div class="features-grid">
+                """
+
+                for item in items:
+                    content_html += f"""
+                    <div class="feature-item">
+                        {escape(str(item))}
+                    </div>
+                    """
+
+                content_html += """
+                    </div>
+                </div>
+                """
+
+            elif section_type == "text":
+                title = escape(section.get("title", ""))
+                description = escape(section.get("description", ""))
+
+                content_html += f"""
+                <div class="card">
+                    <h3>{title}</h3>
+                    <p>{description}</p>
                 </div>
                 """
 
             elif section_type == "contact":
+                title = escape(section.get("title", "Контакты"))
+                phone = escape(section.get("phone", ""))
+                email = escape(section.get("email", ""))
+                address = escape(section.get("address", ""))
+
                 content_html += f"""
                 <div class="card">
-                    <h3>{section.get("title", "Контакты")}</h3>
-                    <p>Телефон: {section.get("phone", "")}</p>
-                    <p>Email: {section.get("email", "")}</p>
-                    <p>Адрес: {section.get("address", "")}</p>
+                    <h3>{title}</h3>
+                    <p>Телефон: {phone}</p>
+                    <p>Email: {email}</p>
+                    <p>Адрес: {address}</p>
                 </div>
                 """
 
         content_html += "</section>"
 
     return f"""
-    <!DOCTYPE html>
-    <html lang="ru">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>{site_name}</title>
-        <style>
-            body {{
-                margin: 0;
-                font-family: Arial, sans-serif;
-                background: #0b0b0f;
-                color: #f5f5f5;
-            }}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{site_name}</title>
 
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+
+        html {{
+            scroll-behavior: smooth;
+        }}
+
+        body {{
+            font-family: Arial, sans-serif;
+            background: #0b0b10;
+            color: #ffffff;
+        }}
+
+        header {{
+            width: 100%;
+            padding: 20px 8%;
+            background: #12121a;
+            border-bottom: 1px solid #2a2d3a;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }}
+
+        header strong {{
+            color: #e11d2e;
+            font-size: 24px;
+        }}
+
+        nav {{
+            display: flex;
+            gap: 18px;
+            flex-wrap: wrap;
+        }}
+
+        nav a {{
+            color: #b8bcc8;
+            text-decoration: none;
+            font-size: 15px;
+        }}
+
+        nav a:hover {{
+            color: #e11d2e;
+        }}
+
+        .page-section {{
+            padding: 60px 8%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }}
+
+        .page-section h2 {{
+            font-size: 34px;
+            margin-bottom: 24px;
+        }}
+
+        .hero-block,
+        .card {{
+            background: #12121a;
+            border: 1px solid #2a2d3a;
+            border-radius: 24px;
+            padding: 34px;
+            margin-bottom: 24px;
+            box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+        }}
+
+        .badge {{
+            display: inline-block;
+            padding: 8px 14px;
+            background: rgba(225, 29, 46, 0.12);
+            color: #e11d2e;
+            border-radius: 999px;
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 18px;
+        }}
+
+        .hero-block h1 {{
+            font-size: 46px;
+            line-height: 1.1;
+            margin-bottom: 16px;
+        }}
+
+        .hero-block p,
+        .card p,
+        .feature-item {{
+            color: #b8bcc8;
+            line-height: 1.7;
+            font-size: 16px;
+        }}
+
+        .hero-block button {{
+            margin-top: 22px;
+            padding: 14px 22px;
+            border: none;
+            border-radius: 14px;
+            background: #e11d2e;
+            color: white;
+            font-weight: 700;
+            cursor: pointer;
+        }}
+
+        .hero-block button:hover {{
+            background: #b91523;
+        }}
+
+        .card h3 {{
+            font-size: 24px;
+            margin-bottom: 16px;
+        }}
+
+        .features-grid {{
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+        }}
+
+        .feature-item {{
+            background: #191923;
+            border: 1px solid #2a2d3a;
+            border-radius: 16px;
+            padding: 18px;
+        }}
+
+        @media (max-width: 800px) {{
             header {{
-                padding: 24px 8%;
-                background: #111116;
-                color: white;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                border-bottom: 1px solid #2a2a32;
+                flex-direction: column;
+                gap: 14px;
             }}
 
-            nav a {{
-                color: #d1d5db;
-                margin-left: 20px;
-                text-decoration: none;
+            nav {{
+                justify-content: center;
             }}
 
-            nav a:hover {{
-                color: #ef233c;
+            .hero-block h1 {{
+                font-size: 34px;
             }}
 
-            .page-section {{
-                padding: 60px 8%;
-                max-width: 1100px;
-                margin: 0 auto;
+            .features-grid {{
+                grid-template-columns: 1fr;
             }}
+        }}
+    </style>
+</head>
 
-            .hero, .card {{
-                background: #111116;
-                padding: 40px;
-                border-radius: 24px;
-                border: 1px solid #2a2a32;
-                box-shadow: 0 20px 50px rgba(0,0,0,0.35);
-                margin-bottom: 24px;
-            }}
+<body>
+    <header>
+        <strong>{site_name}</strong>
+        <nav>
+            {menu_html}
+        </nav>
+    </header>
 
-            h1 {{
-                font-size: 42px;
-                margin-bottom: 16px;
-            }}
-
-            h2 {{
-                font-size: 32px;
-                margin-bottom: 24px;
-            }}
-
-            p, li {{
-                color: #a1a1aa;
-                line-height: 1.6;
-            }}
-
-            button {{
-                margin-top: 20px;
-                padding: 14px 24px;
-                border: none;
-                border-radius: 12px;
-                background: #ef233c;
-                color: white;
-                font-size: 16px;
-                cursor: pointer;
-            }}
-
-            button:hover {{
-                background: #c9182b;
-            }}
-        </style>
-    </head>
-    <body>
-        <header>
-            <strong>{site_name}</strong>
-            <nav>{menu_html}</nav>
-        </header>
-
-        {content_html}
-    </body>
-    </html>
-    """
+    {content_html}
+</body>
+</html>
+"""
 
 
 @app.get("/")
 def health_check():
     return {
         "status": "ok",
-        "service": "HGGps Backend API"
+        "service": "HGGps Backend API",
+        "message": "Backend работает"
     }
 
 
 @app.post("/api/projects/generate")
 def generate_project(data: GenerateProjectRequest, request: Request):
-    if len(data.description) < 10:
-        raise HTTPException(
-            status_code=400,
-            detail="Описание проекта слишком короткое"
-        )
-
-    project_id = str(uuid4())
-
-    site_json = create_mock_site(
+    site_json = generate_site(
         description=data.description,
         site_type=data.siteType,
         goal=data.goal,
         style=data.style
     )
 
-    slug = make_unique_slug(site_json["siteName"])
+    project_id = str(uuid4())
+    slug = make_unique_slug(site_json.get("siteName", "site"))
     expires_at = datetime.now() + timedelta(days=7)
 
     base_url = str(request.base_url).rstrip("/")
@@ -284,7 +336,7 @@ def generate_project(data: GenerateProjectRequest, request: Request):
 
     project = {
         "id": project_id,
-        "name": site_json["siteName"],
+        "name": site_json.get("siteName", "Сайт"),
         "description": data.description,
         "siteType": data.siteType,
         "goal": data.goal,
