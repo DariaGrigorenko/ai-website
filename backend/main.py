@@ -17,7 +17,12 @@ app = FastAPI(title="HGGps Backend API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://dariagrigorenko.github.io",
+        "https://dariagrigorenko.github.io/ai-website",
+        "http://127.0.0.1:5500",
+        "http://localhost:5500"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -67,9 +72,7 @@ def render_site_html(site_json):
         content_html += f'<section id="{escape(anchor)}" class="page-section">'
         content_html += f"<h2>{page_title}</h2>"
 
-        sections = page.get("sections", [])
-
-        for section in sections:
+        for section in page.get("sections", []):
             section_type = section.get("type")
 
             if section_type == "hero":
@@ -109,7 +112,7 @@ def render_site_html(site_json):
                 """
 
             elif section_type == "text":
-                title = escape(section.get("title", ""))
+                title = escape(section.get("title", "О проекте"))
                 description = escape(section.get("description", ""))
 
                 content_html += f"""
