@@ -11,19 +11,33 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
 
 
-def generate_site_with_ai(description, site_type, goal, style):
+def generate_site(description, site_type, goal, style):
+    try:
+        return generate_site_with_openai(description, site_type, goal, style)
+    except Exception as error:
+        print("AI generation failed. Mock generation used:", error)
+        return generate_mock_site(description, site_type, goal, style)
+
+
+def generate_site_with_openai(description, site_type, goal, style):
     if not OPENAI_API_KEY:
-        raise RuntimeError("OPENAI_API_KEY не найден")
+        raise RuntimeError("OPENAI_API_KEY is missing")
 
     client = OpenAI(api_key=OPENAI_API_KEY)
 
     prompt = f"""
-Ты — генератор структуры сайта для сервиса HGGps.
+Ты — генератор сайтов для проекта HGGps.
 
-На основе данных пользователя создай JSON сайта.
+Пользователь создаёт сайт по этапам:
+1. описание проекта;
+2. настройка фона;
+3. размещение кнопок и блоков;
+4. добавление информации;
+5. получение финального сайта.
 
-Данные пользователя:
-Описание:
+На основе данных пользователя создай структуру сайта в JSON.
+
+Описание пользователя:
 {description}
 
 Тип сайта:
@@ -35,9 +49,9 @@ def generate_site_with_ai(description, site_type, goal, style):
 Стиль:
 {style}
 
-Верни строго JSON без markdown и без пояснений.
+Верни только валидный JSON без markdown, без пояснений и без HTML.
 
-Формат JSON должен быть таким:
+Формат ответа:
 {{
   "siteName": "Название сайта",
   "siteType": "Тип сайта",
@@ -52,7 +66,7 @@ def generate_site_with_ai(description, site_type, goal, style):
         {{
           "type": "hero",
           "title": "Главный заголовок",
-          "subtitle": "Краткое описание",
+          "subtitle": "Краткое описание сайта",
           "buttonText": "Текст кнопки"
         }},
         {{
@@ -82,13 +96,13 @@ def generate_site_with_ai(description, site_type, goal, style):
 }}
 
 Правила:
-1. Не добавляй HTML.
-2. Не добавляй CSS.
-3. Не добавляй markdown.
-4. Верни только валидный JSON.
-5. У сайта должна быть минимум одна страница.
-6. Если данных мало, аккуратно дополни их нейтральными текстами.
-7. Тексты должны быть на русском языке.
+1. Все тексты должны быть на русском языке.
+2. Не используй HTML.
+3. Не используй CSS.
+4. Не добавляй markdown.
+5. Сайт должен выглядеть логично по описанию пользователя.
+6. Если данных не хватает, аккуратно дополни нейтральными текстами.
+7. Название сайта должно быть коротким и понятным.
 """
 
     response = client.responses.create(
@@ -104,8 +118,8 @@ def generate_site_with_ai(description, site_type, goal, style):
         start = raw_text.find("{")
         end = raw_text.rfind("}") + 1
 
-        if start == -1 or end == 0:
-            raise ValueError("Нейросеть вернула не JSON")
+        if start == -1 or end <= 0:
+            raise ValueError("OpenAI returned invalid JSON")
 
         site_json = json.loads(raw_text[start:end])
 
@@ -115,7 +129,7 @@ def generate_site_with_ai(description, site_type, goal, style):
 
 
 def generate_mock_site(description, site_type, goal, style):
-    title = make_short_title(description)
+    title = make_title(description)
 
     return {
         "siteName": title,
@@ -138,9 +152,9 @@ def generate_mock_site(description, site_type, goal, style):
                         "type": "features",
                         "title": "Преимущества",
                         "items": [
-                            "Понятная структура сайта",
+                            "Быстрое создание сайта",
                             "Современный внешний вид",
-                            "Быстрый запуск проекта"
+                            "Понятная структура"
                         ]
                     },
                     {
@@ -161,29 +175,21 @@ def generate_mock_site(description, site_type, goal, style):
     }
 
 
-def generate_site(description, site_type, goal, style):
-    try:
-        return generate_site_with_ai(description, site_type, goal, style)
-    except Exception as error:
-        print(f"AI generation failed, mock used: {error}")
-        return generate_mock_site(description, site_type, goal, style)
-
-
 def validate_site_json(site_json):
     if not isinstance(site_json, dict):
-        raise ValueError("site_json должен быть объектом")
+        raise ValueError("site_json must be object")
 
-    if "siteName" not in site_json:
-        raise ValueError("Нет siteName")
+    if not site_json.get("siteName"):
+        raise ValueError("siteName is missing")
 
-    if "pages" not in site_json:
-        raise ValueError("Нет pages")
+    if not isinstance(site_json.get("pages"), list):
+        raise ValueError("pages must be list")
 
-    if not isinstance(site_json["pages"], list) or len(site_json["pages"]) == 0:
-        raise ValueError("pages должен быть непустым списком")
+    if len(site_json["pages"]) == 0:
+        raise ValueError("pages must not be empty")
 
 
-def make_short_title(description):
+def make_title(description):
     first_line = description.strip().split("\n")[0]
     first_sentence = first_line.split(".")[0].strip()
 
