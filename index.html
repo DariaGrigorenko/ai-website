@@ -10,215 +10,165 @@
 
 <header class="header">
   <div class="logo">HGGps</div>
-
   <nav class="nav">
     <a href="#constructor">Конструктор</a>
     <a href="#preview">Предпросмотр</a>
   </nav>
-
   <button class="theme-toggle" id="themeToggle">Светлая тема</button>
 </header>
 
 <main class="container">
-
   <section class="hero">
     <div class="hero-text">
       <span class="badge">AI Website Builder</span>
-
-      <h1>Поэтапное создание сайта с помощью ИИ</h1>
-
+      <h1>ИИ сам собирает структуру, стиль и блоки сайта</h1>
       <p>
-        HGGps создаёт сайт по шагам: сначала читает описание проекта,
-        затем помогает настроить фон, разместить кнопки и блоки,
-        добавить информацию и получить ссылку на финальный сайт.
+        Опиши проект, укажи нужную информацию, контакты и количество кнопок.
+        Gemini проанализирует запрос, сам выберет оформление, фон, страницы,
+        расположение блоков и тексты.
       </p>
-
-      <a href="#constructor" class="btn btn-primary">Начать создание</a>
+      <a href="#constructor" class="btn btn-primary">Создать сайт</a>
     </div>
 
     <div class="hero-card">
-      <div class="window-top">
-        <span></span>
-        <span></span>
-        <span></span>
-      </div>
-
+      <div class="window-top"><span></span><span></span><span></span></div>
       <div class="hero-preview">
         <div class="hero-preview-banner"></div>
         <div class="hero-line large"></div>
         <div class="hero-line"></div>
         <div class="hero-line small"></div>
-
-        <div class="hero-grid">
-          <div></div>
-          <div></div>
-          <div></div>
-        </div>
+        <div class="hero-grid"><div></div><div></div><div></div></div>
       </div>
     </div>
   </section>
 
   <section class="section" id="constructor">
     <div class="section-title">
-      <h2>Конструктор сайта</h2>
-      <p>Заполняй этапы по очереди и смотри, как сайт собирается постепенно.</p>
+      <h2>Создание сайта</h2>
+      <p>Пользователь отвечает на несколько вопросов, остальное решает ИИ.</p>
     </div>
 
     <div class="steps">
-      <div class="step active" id="step1Indicator">1. Описание</div>
-      <div class="step" id="step2Indicator">2. Фон</div>
-      <div class="step" id="step3Indicator">3. Блоки</div>
-      <div class="step" id="step4Indicator">4. Информация</div>
-      <div class="step" id="step5Indicator">5. Ссылка</div>
+      <div class="step active" id="step1Indicator">1. Проект</div>
+      <div class="step" id="step2Indicator">2. Информация</div>
+      <div class="step" id="step3Indicator">3. Генерация</div>
+      <div class="step" id="step4Indicator">4. Предпросмотр</div>
     </div>
 
     <div class="constructor-layout">
-
       <div class="panel">
-
         <div class="stage active" id="stage1">
-          <h3>Шаг 1. Описание проекта</h3>
+          <h3>Шаг 1. Опиши проект</h3>
           <p class="stage-description">
-            Сначала сайт читает описание проекта и понимает, какой сайт нужно создать.
+            Здесь пользователь объясняет, какой сайт ему нужен. Типов сайта только два: лендинг или многостраничный сайт.
           </p>
 
           <label for="projectDescription">Описание проекта</label>
-          <textarea id="projectDescription" placeholder="Например: сайт для кофейни в Москве, где можно посмотреть меню, адрес, акции и оставить заявку"></textarea>
+          <textarea id="projectDescription" placeholder="Например: сайт для кофейни в Москве. Нужно показать меню, атмосферу, адрес и возможность оставить заявку."></textarea>
 
           <label for="siteType">Тип сайта</label>
           <select id="siteType">
             <option>Лендинг</option>
             <option>Многостраничный сайт</option>
-            <option>Портфолио</option>
-            <option>Сайт мероприятия</option>
           </select>
 
-          <button class="btn btn-primary full-width" id="analyzeProjectBtn">
-            Прочитать описание
-          </button>
+          <label for="goal">Главная цель сайта</label>
+          <select id="goal">
+            <option value="">Выбери цель</option>
+            <option>Получить заявки</option>
+            <option>Записать клиента</option>
+            <option>Рассказать о компании</option>
+            <option>Показать услуги</option>
+            <option>Показать портфолио</option>
+            <option>Рассказать о мероприятии</option>
+          </select>
+
+          <button class="btn btn-primary full-width" id="nextToInfoBtn">Дальше</button>
         </div>
 
         <div class="stage" id="stage2">
-          <h3>Шаг 2. Настройка фона</h3>
+          <h3>Шаг 2. Что должен понять ИИ</h3>
           <p class="stage-description">
-            Теперь пользователь описывает, каким должен быть фон сайта, и оценивает результат.
+            Не выбирай фон и расположение блоков из списка. Просто опиши, каким хочешь видеть сайт, а ИИ сам выберет стиль, фон и структуру.
           </p>
 
-          <label for="backgroundDescription">Как должен выглядеть фон?</label>
-          <textarea id="backgroundDescription" placeholder="Например: тёмный фон, красный градиент, строгий стиль, без лишних деталей"></textarea>
+          <label for="designPreferences">Как ты хочешь видеть оформление сайта?</label>
+          <textarea id="designPreferences" placeholder="Например: современный тёмный сайт, красные акценты, крупный первый экран, строгий стиль, без лишних деталей."></textarea>
 
-          <label for="backgroundStyle">Вариант фона</label>
-          <select id="backgroundStyle">
-            <option value="dark-red">Тёмный красный градиент</option>
-            <option value="minimal-light">Светлый минимализм</option>
-            <option value="business-dark">Деловой тёмный фон</option>
-            <option value="creative">Креативный контрастный фон</option>
+          <label for="desiredInfo">Какую информацию нужно разместить на сайте?</label>
+          <textarea id="desiredInfo" placeholder="Например: меню, цены, преимущества, адрес, расписание, отзывы, команда, форма заявки."></textarea>
+
+          <div class="form-grid">
+            <div>
+              <label for="contactEmail">Почта</label>
+              <input id="contactEmail" type="email" placeholder="Можно оставить пустым">
+            </div>
+            <div>
+              <label for="contactPhone">Телефон</label>
+              <input id="contactPhone" type="text" placeholder="Можно оставить пустым">
+            </div>
+          </div>
+
+          <label for="buttonCount">Сколько кнопок нужно на первом экране?</label>
+          <select id="buttonCount">
+            <option value="1">1 кнопка</option>
+            <option value="2">2 кнопки</option>
+            <option value="3">3 кнопки</option>
+            <option value="4">4 кнопки</option>
+            <option value="5">5 кнопок</option>
           </select>
 
-          <button class="btn btn-primary full-width" id="generateBackgroundBtn">
-            Сгенерировать фон
-          </button>
-
-          <div class="rating-row" id="backgroundRating">
-            <button class="small-btn" id="likeBackgroundBtn">Фон нравится</button>
-            <button class="small-btn secondary-small" id="remakeBackgroundBtn">Переделать фон</button>
+          <div class="two-buttons">
+            <button class="btn btn-secondary full-width" id="backToProjectBtn">Назад</button>
+            <button class="btn btn-primary full-width" id="generateSiteBtn">Сгенерировать сайт ИИ</button>
           </div>
         </div>
 
         <div class="stage" id="stage3">
-          <h3>Шаг 3. Размещение кнопок и блоков</h3>
+          <h3>Шаг 3. Генерация</h3>
           <p class="stage-description">
-            Пользователь выбирает, где будут находиться основные блоки и кнопки.
+            ИИ анализирует описание, выбирает карту сайта, стиль, фон, блоки, тексты, кнопки и контакты.
           </p>
-
-          <label for="layoutType">Расположение блоков</label>
-          <select id="layoutType">
-            <option value="center">Центрированное размещение</option>
-            <option value="left">Текст слева, блоки справа</option>
-            <option value="cards">Карточки под главным блоком</option>
-          </select>
-
-          <label for="buttonPlace">Где разместить главную кнопку?</label>
-          <select id="buttonPlace">
-            <option value="under-title">Под главным текстом</option>
-            <option value="center">По центру экрана</option>
-            <option value="bottom">В нижней части первого блока</option>
-          </select>
-
-          <button class="btn btn-primary full-width" id="generateLayoutBtn">
-            Разместить блоки и кнопки
-          </button>
-
-          <div class="rating-row" id="layoutRating">
-            <button class="small-btn" id="likeLayoutBtn">Размещение нравится</button>
-            <button class="small-btn secondary-small" id="remakeLayoutBtn">Изменить размещение</button>
+          <div class="loader-box">
+            <div class="loader"></div>
+            <p id="loadingText">Сайт генерируется, пожалуйста, подождите.</p>
           </div>
         </div>
 
         <div class="stage" id="stage4">
-          <h3>Шаг 4. Добавление информации</h3>
+          <h3>Шаг 4. Предпросмотр и публикация</h3>
           <p class="stage-description">
-            Теперь пользователь добавляет информацию в нужные части сайта.
+            Ниже показан сайт, который сделал ИИ. Если результат не подходит, можно перегенерировать другой вариант.
           </p>
 
-          <label for="mainTitle">Главный заголовок</label>
-          <input id="mainTitle" type="text" placeholder="Например: Кофейня рядом с вами">
+          <div class="ai-summary" id="aiSummary"></div>
 
-          <label for="mainText">Основное описание</label>
-          <textarea id="mainText" placeholder="Например: Свежий кофе, десерты и уютная атмосфера каждый день"></textarea>
+          <label for="regenerationNote">Что изменить при перегенерации?</label>
+          <textarea id="regenerationNote" placeholder="Например: сделай сайт светлее, добавь больше блоков про цены, измени стиль на более премиальный."></textarea>
 
-          <label for="buttonText">Текст кнопки</label>
-          <input id="buttonText" type="text" placeholder="Например: Оставить заявку">
-
-          <label for="extraInfo">Дополнительная информация</label>
-          <textarea id="extraInfo" placeholder="Например: адрес, контакты, преимущества, услуги или акции"></textarea>
-
-          <button class="btn btn-primary full-width" id="addContentBtn">
-            Добавить информацию
-          </button>
-        </div>
-
-        <div class="stage" id="stage5">
-          <h3>Шаг 5. Финальный сайт и ссылка</h3>
-          <p class="stage-description">
-            Все этапы завершены. Теперь можно создать публичную ссылку через backend.
-          </p>
-
-          <button class="btn btn-primary full-width" id="createLinkBtn">
-            Создать ссылку на сайт
-          </button>
-
-          <button class="btn btn-secondary full-width" id="restartBtn">
-            Начать заново
-          </button>
+          <div class="two-buttons">
+            <button class="btn btn-secondary full-width" id="regenerateBtn">Перегенерировать сайт</button>
+            <button class="btn btn-primary full-width" id="openGeneratedBtn">Открыть сайт</button>
+          </div>
 
           <div id="publicLinkBox" class="public-link-box"></div>
         </div>
-
       </div>
 
       <div class="panel preview-panel" id="preview">
         <h3>Предпросмотр</h3>
-
         <div class="site-preview" id="sitePreview">
           <div class="preview-empty">
-            Заполни первый этап, чтобы начать сборку сайта.
+            Заполни описание проекта. После генерации здесь появится сайт, который сделал ИИ.
           </div>
         </div>
-
-        <div class="status-box" id="statusBox">
-          Текущий этап: ожидание описания проекта.
-        </div>
+        <div class="status-box" id="statusBox">Текущий этап: ожидание описания проекта.</div>
       </div>
-
     </div>
   </section>
-
 </main>
 
-<footer class="footer">
-  <p>HGGps © 2026</p>
-</footer>
+<footer class="footer"><p>HGGps © 2026 — ИИ-конструктор сайтов</p></footer>
 
 <script src="script.js"></script>
 </body>

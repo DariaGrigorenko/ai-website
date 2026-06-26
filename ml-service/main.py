@@ -1,3 +1,1 @@
-import json
-import os
-
+# ML-часть вынесена в backend/ai_generator.py

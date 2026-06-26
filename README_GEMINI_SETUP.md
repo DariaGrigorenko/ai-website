@@ -1,60 +1,26 @@
-# HGGps: запуск backend через Gemini API
+# Настройка Gemini API
 
-## Что изменено
-
-Проект переведён с OpenAI API на Gemini API.
-
-Frontend остаётся на GitHub Pages и отправляет запросы на Render:
-
-```js
-const API_URL = "https://ai-website-exwx.onrender.com";
-```
-
-Backend работает на FastAPI и обращается к Gemini через официальный пакет `google-genai`.
-
-## Render Environment Variables
-
-В Render нужно добавить:
+1. Получить ключ: https://aistudio.google.com/app/apikey
+2. В Render открыть сервис backend.
+3. Перейти в Environment.
+4. Добавить переменные:
 
 ```text
-GEMINI_API_KEY=ваш_ключ_Gemini
+GEMINI_API_KEY=твой_ключ_Gemini
 GEMINI_MODEL=gemini-2.5-flash
 ```
 
-Старые переменные OpenAI можно оставить, но они больше не используются.
-
-## Render настройки
-
-```text
-Root Directory: backend
-Build Command: pip install -r requirements.txt
-Start Command: uvicorn main:app --host 0.0.0.0 --port $PORT
-```
-
-## Проверка
-
-Backend:
+5. Нажать Manual Deploy → Clear build cache & deploy.
+6. Проверить backend:
 
 ```text
 https://ai-website-exwx.onrender.com/
 ```
 
-Должен вернуть JSON с `aiProvider: Gemini`.
+Должно быть:
 
-Frontend:
-
-```text
-https://dariagrigorenko.github.io/ai-website/#create
+```json
+{"status":"ok","service":"HGGps Backend API","aiProvider":"Gemini","message":"Backend работает"}
 ```
 
-После создания сайта в блоке ссылки будет видно:
-
-```text
-Генерация: gemini / gemini-2.5-flash
-```
-
-Если будет `mock`, значит Gemini не сработал. Причину можно смотреть в Render Logs и в API:
-
-```text
-https://ai-website-exwx.onrender.com/api/public/slug-сайта
-```
+Ключ Gemini нельзя добавлять в GitHub. Он должен быть только в Render Environment Variables.

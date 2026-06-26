@@ -2,7 +2,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-
 BASE_DIR = Path(__file__).resolve().parent
 DATA_FILE = BASE_DIR / "projects.json"
 
@@ -28,9 +27,7 @@ def save_projects(projects: list[dict[str, Any]]) -> None:
 
 def find_project_by_slug(slug: str) -> dict[str, Any] | None:
     projects = load_projects()
-
     for project in projects:
         if project.get("publicSlug") == slug:
             return project
-
     return None

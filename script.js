@@ -1,62 +1,41 @@
 const API_URL = "https://ai-website-exwx.onrender.com";
 
 const themeToggle = document.getElementById("themeToggle");
+const sitePreview = document.getElementById("sitePreview");
+const statusBox = document.getElementById("statusBox");
+const publicLinkBox = document.getElementById("publicLinkBox");
+const aiSummary = document.getElementById("aiSummary");
 
-const stage1 = document.getElementById("stage1");
-const stage2 = document.getElementById("stage2");
-const stage3 = document.getElementById("stage3");
-const stage4 = document.getElementById("stage4");
-const stage5 = document.getElementById("stage5");
+const stages = [
+  document.getElementById("stage1"),
+  document.getElementById("stage2"),
+  document.getElementById("stage3"),
+  document.getElementById("stage4")
+];
 
 const indicators = [
   document.getElementById("step1Indicator"),
   document.getElementById("step2Indicator"),
   document.getElementById("step3Indicator"),
-  document.getElementById("step4Indicator"),
-  document.getElementById("step5Indicator")
+  document.getElementById("step4Indicator")
 ];
-
-const sitePreview = document.getElementById("sitePreview");
-const statusBox = document.getElementById("statusBox");
-const publicLinkBox = document.getElementById("publicLinkBox");
 
 const projectDescription = document.getElementById("projectDescription");
 const siteType = document.getElementById("siteType");
+const goal = document.getElementById("goal");
+const designPreferences = document.getElementById("designPreferences");
+const desiredInfo = document.getElementById("desiredInfo");
+const contactEmail = document.getElementById("contactEmail");
+const contactPhone = document.getElementById("contactPhone");
+const buttonCount = document.getElementById("buttonCount");
+const regenerationNote = document.getElementById("regenerationNote");
 
-const backgroundDescription = document.getElementById("backgroundDescription");
-const backgroundStyle = document.getElementById("backgroundStyle");
-const backgroundRating = document.getElementById("backgroundRating");
-
-const layoutType = document.getElementById("layoutType");
-const buttonPlace = document.getElementById("buttonPlace");
-const layoutRating = document.getElementById("layoutRating");
-
-const mainTitle = document.getElementById("mainTitle");
-const mainText = document.getElementById("mainText");
-const buttonText = document.getElementById("buttonText");
-const extraInfo = document.getElementById("extraInfo");
-
+let currentProject = null;
+let currentPayload = null;
 let generatedPublicLink = "";
-
-const state = {
-  description: "",
-  siteType: "",
-  backgroundDescription: "",
-  backgroundStyleText: "",
-  backgroundClass: "bg-dark-red",
-  layoutClass: "generated-layout-center",
-  layoutText: "Центрированное размещение",
-  buttonClass: "",
-  buttonPlaceText: "Под главным текстом",
-  title: "Будущий сайт",
-  text: "Описание сайта появится здесь после добавления информации.",
-  button: "Оставить заявку",
-  extra: "Дополнительная информация появится здесь."
-};
 
 function applySavedTheme() {
   const savedTheme = localStorage.getItem("theme");
-
   if (savedTheme === "light") {
     document.body.classList.add("light-theme");
     themeToggle.textContent = "Тёмная тема";
@@ -68,7 +47,6 @@ function applySavedTheme() {
 
 themeToggle.addEventListener("click", function () {
   document.body.classList.toggle("light-theme");
-
   if (document.body.classList.contains("light-theme")) {
     localStorage.setItem("theme", "light");
     themeToggle.textContent = "Тёмная тема";
@@ -79,25 +57,13 @@ themeToggle.addEventListener("click", function () {
 });
 
 function showStage(number) {
-  const stages = [stage1, stage2, stage3, stage4, stage5];
-
-  stages.forEach(stage => {
-    stage.classList.remove("active");
-  });
-
+  stages.forEach(stage => stage.classList.remove("active"));
   stages[number - 1].classList.add("active");
 
   indicators.forEach((indicator, index) => {
-    indicator.classList.remove("active");
-    indicator.classList.remove("done");
-
-    if (index + 1 < number) {
-      indicator.classList.add("done");
-    }
-
-    if (index + 1 === number) {
-      indicator.classList.add("active");
-    }
+    indicator.classList.remove("active", "done");
+    if (index + 1 < number) indicator.classList.add("done");
+    if (index + 1 === number) indicator.classList.add("active");
   });
 }
 
@@ -105,12 +71,8 @@ function updateStatus(text) {
   statusBox.textContent = text;
 }
 
-function wait(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 function escapeHtml(text) {
-  return text
+  return String(text || "")
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
@@ -118,236 +80,99 @@ function escapeHtml(text) {
     .replaceAll("'", "&#039;");
 }
 
-function renderPreview() {
+function validateFirstStep() {
+  const description = projectDescription.value.trim();
+  if (!description || description.length < 10) {
+    updateStatus("Введите описание проекта минимум 10 символов.");
+    return false;
+  }
+  if (!goal.value) {
+    updateStatus("Выберите главную цель сайта.");
+    return false;
+  }
+  return true;
+}
+
+function buildPayload(extra = {}) {
+  return {
+    description: projectDescription.value.trim(),
+    siteType: siteType.value,
+    goal: goal.value,
+    designPreferences: designPreferences.value.trim(),
+    desiredInfo: desiredInfo.value.trim(),
+    contactEmail: contactEmail.value.trim(),
+    contactPhone: contactPhone.value.trim(),
+    buttonCount: Number(buttonCount.value || 1),
+    ...extra
+  };
+}
+
+function renderLocalDraft() {
   sitePreview.innerHTML = `
-    <div class="generated-site ${state.backgroundClass}">
-      <div class="generated-inner ${state.layoutClass}">
-        <div>
-          <h2 class="generated-title">${escapeHtml(state.title)}</h2>
-          <p class="generated-text">${escapeHtml(state.text)}</p>
-          <button class="generated-button ${state.buttonClass}">
-            ${escapeHtml(state.button)}
-          </button>
-        </div>
-
-        <div class="generated-blocks">
-          <div class="generated-block">
-            <strong>О проекте</strong>
-            <p>${escapeHtml(state.description || "Здесь будет описание проекта.")}</p>
-          </div>
-
-          <div class="generated-block">
-            <strong>Преимущества</strong>
-            <p>${escapeHtml(state.extra || "Здесь появятся преимущества или услуги.")}</p>
-          </div>
-
-          <div class="generated-block">
-            <strong>Контакты</strong>
-            <p>Здесь можно разместить адрес, телефон или форму заявки.</p>
-          </div>
-        </div>
+    <div class="preview-empty">
+      <div>
+        <strong>ИИ подготовит сайт по этим данным:</strong><br><br>
+        ${escapeHtml(projectDescription.value.trim())}<br><br>
+        Тип сайта: ${escapeHtml(siteType.value)}<br>
+        Цель: ${escapeHtml(goal.value)}
       </div>
     </div>
   `;
 }
 
-document.getElementById("analyzeProjectBtn").addEventListener("click", async function () {
-  const description = projectDescription.value.trim();
-
-  if (!description || description.length < 10) {
-    updateStatus("Введите описание проекта минимум 10 символов.");
-    return;
-  }
-
-  this.disabled = true;
-  this.textContent = "Чтение описания...";
-
-  await wait(700);
-
-  state.description = description;
-  state.siteType = siteType.value;
-  state.title = "Сайт по вашему описанию";
-  state.text = "Описание проекта прочитано. Теперь можно настроить фон сайта.";
-
-  renderPreview();
-
-  updateStatus("Описание проекта прочитано. Теперь настрой фон сайта.");
-  this.disabled = false;
-  this.textContent = "Прочитать описание";
-
+document.getElementById("nextToInfoBtn").addEventListener("click", function () {
+  if (!validateFirstStep()) return;
+  renderLocalDraft();
+  updateStatus("Описание принято. Теперь укажи пожелания к оформлению, информацию, контакты и количество кнопок.");
   showStage(2);
 });
 
-document.getElementById("generateBackgroundBtn").addEventListener("click", async function () {
-  const description = backgroundDescription.value.trim();
+document.getElementById("backToProjectBtn").addEventListener("click", function () {
+  showStage(1);
+  updateStatus("Можно изменить описание проекта или тип сайта.");
+});
 
-  if (!description) {
-    updateStatus("Опиши, каким должен быть фон сайта.");
+document.getElementById("generateSiteBtn").addEventListener("click", async function () {
+  if (!validateFirstStep()) {
+    showStage(1);
     return;
   }
 
-  this.disabled = true;
-  this.textContent = "Генерация фона...";
-
-  await wait(700);
-
-  state.backgroundDescription = description;
-  state.backgroundStyleText = backgroundStyle.options[backgroundStyle.selectedIndex].text;
-
-  if (backgroundStyle.value === "dark-red") {
-    state.backgroundClass = "bg-dark-red";
-  }
-
-  if (backgroundStyle.value === "minimal-light") {
-    state.backgroundClass = "bg-minimal-light";
-  }
-
-  if (backgroundStyle.value === "business-dark") {
-    state.backgroundClass = "bg-business-dark";
-  }
-
-  if (backgroundStyle.value === "creative") {
-    state.backgroundClass = "bg-creative";
-  }
-
-  renderPreview();
-
-  backgroundRating.classList.add("visible");
-  updateStatus("Фон создан. Оцени его: подходит или нужно переделать.");
-
-  this.disabled = false;
-  this.textContent = "Сгенерировать фон";
+  currentPayload = buildPayload();
+  await generateSite(currentPayload, false);
 });
 
-document.getElementById("likeBackgroundBtn").addEventListener("click", function () {
-  updateStatus("Фон принят. Теперь можно разместить кнопки и блоки.");
+document.getElementById("regenerateBtn").addEventListener("click", async function () {
+  if (!currentProject || !currentProject.siteJson) {
+    updateStatus("Сначала нужно сгенерировать первый вариант сайта.");
+    return;
+  }
+
+  const note = regenerationNote.value.trim();
+  const payload = buildPayload({
+    previousSiteJson: currentProject.siteJson,
+    regenerationNote: note || "Пользователю не понравился предыдущий вариант. Сделай заметно другой дизайн, структуру и тексты."
+  });
+
+  currentPayload = payload;
+  await generateSite(payload, true);
+});
+
+document.getElementById("openGeneratedBtn").addEventListener("click", function () {
+  openGeneratedLink();
+});
+
+async function generateSite(payload, isRegeneration) {
   showStage(3);
-});
-
-document.getElementById("remakeBackgroundBtn").addEventListener("click", function () {
-  updateStatus("Измени описание или вариант фона и нажми “Сгенерировать фон” ещё раз.");
-});
-
-document.getElementById("generateLayoutBtn").addEventListener("click", async function () {
-  this.disabled = true;
-  this.textContent = "Размещение блоков...";
-
-  await wait(700);
-
-  state.layoutText = layoutType.options[layoutType.selectedIndex].text;
-  state.buttonPlaceText = buttonPlace.options[buttonPlace.selectedIndex].text;
-
-  if (layoutType.value === "center") {
-    state.layoutClass = "generated-layout-center";
-  }
-
-  if (layoutType.value === "left") {
-    state.layoutClass = "generated-layout-left";
-  }
-
-  if (layoutType.value === "cards") {
-    state.layoutClass = "generated-layout-cards";
-  }
-
-  if (buttonPlace.value === "under-title") {
-    state.buttonClass = "";
-  }
-
-  if (buttonPlace.value === "center") {
-    state.buttonClass = "center-button";
-  }
-
-  if (buttonPlace.value === "bottom") {
-    state.buttonClass = "bottom-button";
-  }
-
-  renderPreview();
-
-  layoutRating.classList.add("visible");
-  updateStatus("Кнопки и блоки размещены. Оцени расположение.");
-
-  this.disabled = false;
-  this.textContent = "Разместить блоки и кнопки";
-});
-
-document.getElementById("likeLayoutBtn").addEventListener("click", function () {
-  updateStatus("Размещение принято. Теперь добавь информацию на сайт.");
-  showStage(4);
-});
-
-document.getElementById("remakeLayoutBtn").addEventListener("click", function () {
-  updateStatus("Измени расположение блоков или кнопки и нажми “Разместить блоки и кнопки” ещё раз.");
-});
-
-document.getElementById("addContentBtn").addEventListener("click", async function () {
-  if (!mainTitle.value.trim() || !mainText.value.trim()) {
-    updateStatus("Добавь хотя бы главный заголовок и основное описание.");
-    return;
-  }
-
-  this.disabled = true;
-  this.textContent = "Добавление информации...";
-
-  await wait(700);
-
-  state.title = mainTitle.value.trim();
-  state.text = mainText.value.trim();
-  state.button = buttonText.value.trim() || "Оставить заявку";
-  state.extra = extraInfo.value.trim() || "Информация будет дополнена позже.";
-
-  renderPreview();
-
-  updateStatus("Информация добавлена. Теперь можно создать ссылку на финальный сайт.");
-
-  this.disabled = false;
-  this.textContent = "Добавить информацию";
-
-  showStage(5);
-});
-
-document.getElementById("createLinkBtn").addEventListener("click", async function () {
-  this.disabled = true;
-  this.textContent = "Создание ссылки...";
-
-  publicLinkBox.classList.add("visible");
-  publicLinkBox.innerHTML = `
-    <p>Отправляем финальный сайт в backend и создаём временную публичную ссылку...</p>
-  `;
-
-  updateStatus("Идёт создание публичной ссылки через backend.");
+  publicLinkBox.classList.remove("visible");
+  publicLinkBox.innerHTML = "";
+  updateStatus(isRegeneration ? "ИИ перегенерирует сайт." : "ИИ генерирует сайт.");
 
   try {
-    const finalDescription = `
-Описание проекта: ${state.description}
-
-Тип сайта: ${state.siteType}
-
-Фон:
-${state.backgroundDescription}
-Выбранный фон: ${state.backgroundStyleText}
-
-Размещение:
-${state.layoutText}
-Кнопка: ${state.buttonPlaceText}
-
-Информация:
-Главный заголовок: ${state.title}
-Основной текст: ${state.text}
-Текст кнопки: ${state.button}
-Дополнительная информация: ${state.extra}
-    `;
-
     const response = await fetch(`${API_URL}/api/projects/generate`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        description: finalDescription,
-        siteType: state.siteType,
-        goal: "Создать сайт по этапам",
-        style: state.backgroundStyleText || "Пользовательский стиль"
-      })
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
     });
 
     if (!response.ok) {
@@ -357,80 +182,83 @@ ${state.layoutText}
     }
 
     const project = await response.json();
-
+    currentProject = project;
     generatedPublicLink = project.fullPublicUrl;
+
     localStorage.setItem("currentProject", JSON.stringify(project));
     localStorage.setItem("generatedPublicLink", generatedPublicLink);
 
-    publicLinkBox.innerHTML = `
-      <strong>Ссылка на сайт создана</strong>
-
-      <p>
-        Генерация: ${project.generatedBy || "unknown"}${project.aiModel ? " / " + project.aiModel : ""}.
-        Эту ссылку можно открыть в браузере или отправить другому человеку.
-      </p>
-
-      <a href="${generatedPublicLink}" target="_blank" class="public-link">
-        ${generatedPublicLink}
-      </a>
-
-      <div class="public-link-actions">
-        <button class="small-btn" onclick="copyGeneratedLink()">
-          Скопировать ссылку
-        </button>
-
-        <button class="small-btn secondary-small" onclick="openGeneratedLink()">
-          Открыть сайт
-        </button>
+    renderGeneratedResult(project);
+    showStage(4);
+    updateStatus(isRegeneration ? "Новый вариант сайта готов." : "ИИ сгенерировал сайт. Можно посмотреть предпросмотр или перегенерировать.");
+  } catch (error) {
+    console.error("Ошибка генерации сайта:", error);
+    showStage(4);
+    sitePreview.innerHTML = `
+      <div class="preview-empty">
+        Не удалось сгенерировать сайт. Проверь Render Logs или попробуй ещё раз.
       </div>
     `;
-
-    updateStatus("Финальный сайт создан. Ссылка готова.");
-
-  } catch (error) {
-    publicLinkBox.innerHTML = `
-      <strong>Ссылку создать не удалось</strong>
-      <p>
-        Backend серверу не удалось обработать запрос.
-      </p>
-    `;
-
-    updateStatus("Ошибка: backend недоступен или вернул ошибку.");
+    aiSummary.innerHTML = `<strong>Ошибка:</strong> ${escapeHtml(error.message)}`;
+    updateStatus("Ошибка: сайт не был сгенерирован.");
   }
+}
 
-  this.disabled = false;
-  this.textContent = "Создать ссылку на сайт";
-});
+function renderGeneratedResult(project) {
+  const siteJson = project.siteJson || {};
+  const design = siteJson.design || {};
+  const pages = Array.isArray(siteJson.siteMap) ? siteJson.siteMap : [];
+  const contacts = siteJson.contact || {};
 
-document.getElementById("restartBtn").addEventListener("click", function () {
-  location.reload();
-});
+  const pagesHtml = pages.map(page => `
+    <li><strong>${escapeHtml(page.title)}</strong> — ${escapeHtml(page.description || "")}</li>
+  `).join("");
+
+  aiSummary.innerHTML = `
+    <strong>Что сделал ИИ:</strong><br>
+    Название: ${escapeHtml(siteJson.siteName || project.name)}<br>
+    Тип: ${escapeHtml(siteJson.siteType || project.siteType)}<br>
+    Стиль: ${escapeHtml(design.styleName || "Выбран ИИ")}<br>
+    Фон: ${escapeHtml(design.background || "Выбран ИИ")}<br>
+    Размещение блоков: ${escapeHtml(design.layoutReason || "Выбрано ИИ")}<br>
+    Контакты: ${escapeHtml(contacts.phone || "")} · ${escapeHtml(contacts.email || "")}<br>
+    Provider: ${escapeHtml(project.generatedBy || "unknown")} ${escapeHtml(project.aiModel || "")}
+    <ul>${pagesHtml}</ul>
+  `;
+
+  sitePreview.innerHTML = `
+    <iframe class="preview-frame" src="${escapeHtml(project.fullPublicUrl)}" title="Предпросмотр сайта"></iframe>
+  `;
+
+  publicLinkBox.classList.add("visible");
+  publicLinkBox.innerHTML = `
+    <strong>Ссылка на сайт готова</strong>
+    <p>Эту ссылку можно открыть в браузере или отправить другому человеку.</p>
+    <a href="${escapeHtml(project.fullPublicUrl)}" target="_blank" class="public-link">${escapeHtml(project.fullPublicUrl)}</a>
+    <div class="public-link-actions">
+      <button class="btn btn-primary" onclick="copyGeneratedLink()">Скопировать ссылку</button>
+      <button class="btn btn-secondary" onclick="openGeneratedLink()">Открыть сайт</button>
+    </div>
+  `;
+}
 
 function copyGeneratedLink() {
   const link = generatedPublicLink || localStorage.getItem("generatedPublicLink");
-
   if (!link) {
-    alert("Сначала создай ссылку");
+    alert("Сначала сгенерируй сайт");
     return;
   }
-
   navigator.clipboard.writeText(link)
-    .then(() => {
-      alert("Ссылка скопирована");
-    })
-    .catch(() => {
-      prompt("Скопируй ссылку вручную:", link);
-    });
+    .then(() => alert("Ссылка скопирована"))
+    .catch(() => prompt("Скопируй ссылку вручную:", link));
 }
 
 function openGeneratedLink() {
   const link = generatedPublicLink || localStorage.getItem("generatedPublicLink");
-
   if (!link) {
-    alert("Сначала создай ссылку");
+    alert("Сначала сгенерируй сайт");
     return;
   }
-
   window.open(link, "_blank");
 }
 
