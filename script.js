@@ -351,7 +351,9 @@ ${state.layoutText}
     });
 
     if (!response.ok) {
-      throw new Error("Backend вернул ошибку");
+      const errorText = await response.text();
+      console.error("Backend error:", response.status, errorText);
+      throw new Error(`Backend вернул ошибку: ${response.status}`);
     }
 
     const project = await response.json();
@@ -364,6 +366,7 @@ ${state.layoutText}
       <strong>Ссылка на сайт создана</strong>
 
       <p>
+        Генерация: ${project.generatedBy || "unknown"}${project.aiModel ? " / " + project.aiModel : ""}.
         Эту ссылку можно открыть в браузере или отправить другому человеку.
       </p>
 

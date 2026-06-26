@@ -1,29 +1,37 @@
 import json
 import os
+from typing import Any
 
 from dotenv import load_dotenv
-from openai import OpenAI
+from google import genai
+from google.genai import types
 
 
 load_dotenv()
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 
-def generate_site(description, site_type, goal, style):
+def generate_site(description: str, site_type: str, goal: str, style: str) -> dict[str, Any]:
     try:
-        return generate_site_with_openai(description, site_type, goal, style)
+        site_json = generate_site_with_gemini(description, site_type, goal, style)
+        site_json["_generatedBy"] = "gemini"
+        site_json["_aiModel"] = GEMINI_MODEL
+        return site_json
     except Exception as error:
-        print("AI generation failed. Mock generation used:", error)
-        return generate_mock_site(description, site_type, goal, style)
+        print("Gemini generation failed. Mock generation used:", repr(error))
+        site_json = generate_mock_site(description, site_type, goal, style)
+        site_json["_generatedBy"] = "mock"
+        site_json["_aiError"] = str(error)
+        return site_json
 
 
-def generate_site_with_openai(description, site_type, goal, style):
-    if not OPENAI_API_KEY:
-        raise RuntimeError("OPENAI_API_KEY is missing")
+def generate_site_with_gemini(description: str, site_type: str, goal: str, style: str) -> dict[str, Any]:
+    if not GEMINI_API_KEY:
+        raise RuntimeError("GEMINI_API_KEY is missing")
 
-    client = OpenAI(api_key=OPENAI_API_KEY)
+    client = genai.Client(api_key=GEMINI_API_KEY)
 
     prompt = f"""
 Ты — генератор сайтов для проекта HGGps.
@@ -100,17 +108,25 @@ def generate_site_with_openai(description, site_type, goal, style):
 2. Не используй HTML.
 3. Не используй CSS.
 4. Не добавляй markdown.
-5. Сайт должен выглядеть логично по описанию пользователя.
+5. Сайт должен соответствовать описанию пользователя.
 6. Если данных не хватает, аккуратно дополни нейтральными текстами.
 7. Название сайта должно быть коротким и понятным.
+8. Не начинай название сайта со слов "Описание проекта".
 """
 
-    response = client.responses.create(
-        model=OPENAI_MODEL,
-        input=prompt
+    response = client.models.generate_content(
+        model=GEMINI_MODEL,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            temperature=0.7,
+        ),
     )
 
-    raw_text = response.output_text.strip()
+    raw_text = (response.text or "").strip()
+
+    if not raw_text:
+        raise ValueError("Gemini returned empty response")
 
     try:
         site_json = json.loads(raw_text)
@@ -119,16 +135,15 @@ def generate_site_with_openai(description, site_type, goal, style):
         end = raw_text.rfind("}") + 1
 
         if start == -1 or end <= 0:
-            raise ValueError("OpenAI returned invalid JSON")
+            raise ValueError("Gemini returned invalid JSON")
 
         site_json = json.loads(raw_text[start:end])
 
     validate_site_json(site_json)
-
     return site_json
 
 
-def generate_mock_site(description, site_type, goal, style):
+def generate_mock_site(description: str, site_type: str, goal: str, style: str) -> dict[str, Any]:
     title = make_title(description)
 
     return {
@@ -146,7 +161,7 @@ def generate_mock_site(description, site_type, goal, style):
                         "type": "hero",
                         "title": title,
                         "subtitle": description[:350],
-                        "buttonText": "Оставить заявку"
+                        "buttonText": "Оставить заявку",
                     },
                     {
                         "type": "features",
@@ -154,28 +169,28 @@ def generate_mock_site(description, site_type, goal, style):
                         "items": [
                             "Быстрое создание сайта",
                             "Современный внешний вид",
-                            "Понятная структура"
-                        ]
+                            "Понятная структура",
+                        ],
                     },
                     {
                         "type": "text",
                         "title": "О проекте",
-                        "description": description
+                        "description": description,
                     },
                     {
                         "type": "contact",
                         "title": "Контакты",
                         "phone": "+7 000 000-00-00",
                         "email": "example@email.com",
-                        "address": "Адрес будет добавлен позже"
-                    }
-                ]
+                        "address": "Адрес будет добавлен позже",
+                    },
+                ],
             }
-        ]
+        ],
     }
 
 
-def validate_site_json(site_json):
+def validate_site_json(site_json: dict[str, Any]) -> None:
     if not isinstance(site_json, dict):
         raise ValueError("site_json must be object")
 
@@ -189,8 +204,9 @@ def validate_site_json(site_json):
         raise ValueError("pages must not be empty")
 
 
-def make_title(description):
-    first_line = description.strip().split("\n")[0]
+def make_title(description: str) -> str:
+    clean = description.replace("Описание проекта:", "").strip()
+    first_line = clean.split("\n")[0]
     first_sentence = first_line.split(".")[0].strip()
 
     if len(first_sentence) < 5:
