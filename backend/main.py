@@ -64,26 +64,82 @@ def css_color(site_json: dict[str, Any], key: str, fallback: str) -> str:
     return fallback
 
 
-def render_buttons(buttons: list[dict[str, Any]]) -> str:
+
+IMAGE_LIBRARY = {
+    "coffee": "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1200&q=80",
+    "food": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=80",
+    "beauty": "https://images.unsplash.com/photo-1560066984-138dadb4c0356?auto=format&fit=crop&w=1200&q=80",
+    "fitness": "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=1200&q=80",
+    "yoga": "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=1200&q=80",
+    "education": "https://images.unsplash.com/photo-1523580846011-d3a5bc25702b?auto=format&fit=crop&w=1200&q=80",
+    "business": "https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1200&q=80",
+    "portfolio": "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80",
+    "event": "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=1200&q=80",
+    "technology": "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80",
+    "interior": "https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=1200&q=80",
+    "travel": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80",
+    "health": "https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&w=1200&q=80",
+    "creative": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80",
+    "default": "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80",
+}
+
+
+def get_image_url(category: Any) -> str:
+    key = str(category or "").strip().lower()
+    return IMAGE_LIBRARY.get(key, IMAGE_LIBRARY["default"])
+
+
+def get_section_image(section: dict[str, Any], site_json: dict[str, Any]) -> tuple[str, str]:
+    image = section.get("image") if isinstance(section.get("image"), dict) else {}
+    design = site_json.get("design", {}) if isinstance(site_json.get("design"), dict) else {}
+    category = image.get("category") or section.get("imageCategory") or design.get("imageCategory") or "default"
+    alt = image.get("alt") or section.get("imageAlt") or f"Изображение для сайта {site_json.get('siteName', '')}"
+    return get_image_url(category), escape(str(alt))
+
+def normalize_button_target(raw_target: Any, site_json: dict[str, Any]) -> str:
+    contact = site_json.get("contact", {}) if isinstance(site_json.get("contact"), dict) else {}
+    phone = str(contact.get("phone") or "").strip()
+    email = str(contact.get("email") or "").strip()
+    value = str(raw_target or "").strip()
+    low = value.lower()
+
+    if value.startswith("#"):
+        if low in {"#contact", "#contacts", "#kontakt", "#контакты", "#zayavka", "#request"}:
+            return "#contacts"
+        return value
+
+    if low.startswith(("http://", "https://", "tel:", "mailto:")):
+        return value
+
+    if "тел" in low or "звон" in low or "phone" in low or "call" in low:
+        return f"tel:{phone}" if phone else "#contacts"
+
+    if "mail" in low or "поч" in low or "email" in low:
+        return f"mailto:{email}" if email else "#contacts"
+
+    return "#contacts"
+
+
+def render_buttons(buttons: list[dict[str, Any]], site_json: dict[str, Any]) -> str:
     html = ""
+    if not buttons:
+        buttons = [{"text": "Связаться", "target": "#contacts"}]
+
     for index, button in enumerate(buttons):
         text = escape(str(button.get("text") or f"Кнопка {index + 1}"))
-        raw_target = str(button.get("target") or "#contacts").strip()
-        if raw_target.startswith("tel:") or raw_target.startswith("mailto:") or raw_target.startswith("http://") or raw_target.startswith("https://"):
-            target = escape(raw_target)
-        else:
-            target = "#contacts"
+        target = escape(normalize_button_target(button.get("target"), site_json))
         class_name = "site-btn" if index == 0 else "site-btn site-btn-outline"
         html += f'<a class="{class_name}" href="{target}">{text}</a>'
     return html
 
 
-def render_section(section: dict[str, Any], page_index: int) -> str:
+def render_section(section: dict[str, Any], page_index: int, site_json: dict[str, Any]) -> str:
     section_type = section.get("type")
 
     if section_type == "hero":
         title = escape(str(section.get("title") or ""))
         subtitle = escape(str(section.get("subtitle") or ""))
+        image_url, image_alt = get_section_image(section, site_json)
         buttons = section.get("buttons")
         if not isinstance(buttons, list):
             button_text = section.get("buttonText", "Подробнее")
@@ -93,12 +149,10 @@ def render_section(section: dict[str, Any], page_index: int) -> str:
             <div class="hero-content">
                 <h1>{title}</h1>
                 <p>{subtitle}</p>
-                <div class="button-row">{render_buttons(buttons)}</div>
+                <div class="button-row">{render_buttons(buttons, site_json)}</div>
             </div>
             <div class="hero-visual">
-                <div class="visual-card big"></div>
-                <div class="visual-card small"></div>
-                <div class="visual-card line"></div>
+                <img class="hero-image" src="{image_url}" alt="{image_alt}" loading="lazy">
             </div>
         </section>
         """
@@ -160,6 +214,22 @@ def render_section(section: dict[str, Any], page_index: int) -> str:
     """
 
 
+def ensure_contact_section(site_json: dict[str, Any]) -> str:
+    contact = site_json.get("contact", {}) if isinstance(site_json.get("contact"), dict) else {}
+    phone = escape(str(contact.get("phone") or "+7 900 123-45-67"))
+    email = escape(str(contact.get("email") or "hello@example.ru"))
+    return f"""
+    <section class="content-section contact-section" id="contacts">
+        <h2>Контакты</h2>
+        <div class="contact-grid">
+            <div><strong>Телефон</strong><p>{phone}</p></div>
+            <div><strong>Email</strong><p>{email}</p></div>
+            <div><strong>Заявка</strong><p>Оставьте сообщение удобным способом, и мы свяжемся с вами.</p></div>
+        </div>
+    </section>
+    """
+
+
 def render_site_html(site_json: dict[str, Any]) -> str:
     site_name = escape(str(site_json.get("siteName") or "Сайт"))
     pages = site_json.get("pages") if isinstance(site_json.get("pages"), list) else []
@@ -173,6 +243,7 @@ def render_site_html(site_json: dict[str, Any]) -> str:
 
     menu_html = ""
     content_html = ""
+    has_contacts = False
 
     for page_index, page in enumerate(pages):
         page_title = escape(str(page.get("title") or "Страница"))
@@ -185,7 +256,12 @@ def render_site_html(site_json: dict[str, Any]) -> str:
             content_html += f'<section class="page-heading"><h1>{page_title}</h1></section>'
         for section in page.get("sections", []):
             if isinstance(section, dict):
-                content_html += render_section(section, page_index)
+                if section.get("type") == "contact" and page_index == 0:
+                    has_contacts = True
+                content_html += render_section(section, page_index, site_json)
+        if page_index == 0 and not has_contacts:
+            content_html += ensure_contact_section(site_json)
+            has_contacts = True
         content_html += '</main>'
 
     if not content_html:
@@ -201,44 +277,44 @@ def render_site_html(site_json: dict[str, Any]) -> str:
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         html {{ scroll-behavior: smooth; }}
         body {{
-            font-family: Arial, sans-serif;
+            font-family: Georgia, "Times New Roman", serif;
             background:
-              radial-gradient(circle at top left, {accent}44, transparent 34%),
-              linear-gradient(135deg, {primary}, {secondary});
+              linear-gradient(160deg, {primary} 0%, {secondary} 54%, {surface} 100%);
             color: {text};
             min-height: 100vh;
         }}
         .site-header {{
             position: sticky; top: 0; z-index: 20;
-            padding: 18px 8%;
-            background: rgba(10, 10, 16, 0.82);
-            backdrop-filter: blur(14px);
-            border-bottom: 1px solid rgba(255,255,255,0.12);
+            width: min(1120px, 92%);
+            margin: 22px auto 0;
+            padding: 16px 22px;
+            background: rgba(255,255,255,0.10);
+            backdrop-filter: blur(18px);
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 999px;
             display: flex; justify-content: space-between; align-items: center; gap: 18px;
+            box-shadow: 0 18px 55px rgba(0,0,0,.22);
         }}
-        .brand {{ color: {accent}; font-size: 24px; font-weight: 800; text-decoration: none; }}
-        nav {{ display: flex; gap: 16px; flex-wrap: wrap; }}
-        nav a {{ color: {text}; opacity: .78; text-decoration: none; font-size: 15px; }}
-        nav a:hover {{ color: {accent}; opacity: 1; }}
-        .page-wrapper {{ width: 84%; max-width: 1180px; margin: 0 auto; padding: 42px 0; }}
-        .hero-block {{ min-height: 520px; display: grid; grid-template-columns: 1.15fr .85fr; gap: 34px; align-items: center; }}
-        .badge {{ display: inline-block; padding: 8px 14px; border-radius: 999px; background: {accent}24; color: {accent}; font-weight: 700; margin-bottom: 20px; }}
-        h1 {{ font-size: clamp(38px, 7vw, 76px); line-height: .98; margin-bottom: 20px; letter-spacing: -0.04em; }}
-        h2 {{ font-size: clamp(28px, 4vw, 44px); margin-bottom: 20px; }}
-        p {{ font-size: 17px; line-height: 1.7; opacity: .86; }}
-        .button-row {{ display: flex; gap: 12px; flex-wrap: wrap; margin-top: 28px; }}
-        .site-btn {{ display: inline-block; padding: 14px 20px; border-radius: 14px; background: {accent}; color: #fff; text-decoration: none; font-weight: 800; }}
-        .site-btn-outline {{ background: transparent; border: 1px solid rgba(255,255,255,.26); color: {text}; }}
-        .hero-visual {{ min-height: 360px; position: relative; background: {surface}; border: 1px solid rgba(255,255,255,.16); border-radius: 30px; box-shadow: 0 28px 70px rgba(0,0,0,.35); overflow: hidden; }}
-        .visual-card {{ position: absolute; border-radius: 22px; background: linear-gradient(135deg, {accent}, {secondary}); }}
-        .visual-card.big {{ width: 72%; height: 52%; left: 9%; top: 12%; }}
-        .visual-card.small {{ width: 42%; height: 28%; right: 8%; bottom: 12%; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.18); }}
-        .visual-card.line {{ width: 62%; height: 14px; left: 12%; bottom: 28%; border-radius: 999px; background: rgba(255,255,255,.18); }}
-        .content-section {{ margin: 26px 0; padding: 34px; background: {surface}; border: 1px solid rgba(255,255,255,.14); border-radius: 26px; box-shadow: 0 20px 50px rgba(0,0,0,.25); }}
-        .features-grid, .contact-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }}
-        .feature-item, .contact-grid div {{ padding: 22px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); border-radius: 20px; }}
-        .feature-item strong, .contact-grid strong {{ display: block; font-size: 18px; margin-bottom: 8px; }}
-        .page-heading {{ padding: 44px 0 12px; }}
+        .brand {{ color: {text}; font-size: 22px; font-weight: 700; text-decoration: none; letter-spacing: -0.03em; }}
+        nav {{ display: flex; gap: 10px; flex-wrap: wrap; }}
+        nav a {{ color: {text}; opacity: .88; text-decoration: none; font-size: 14px; padding: 9px 13px; border-radius: 999px; background: rgba(255,255,255,.08); }}
+        nav a:hover {{ background: {accent}; color: #fff; opacity: 1; }}
+        .page-wrapper {{ width: 84%; max-width: 1160px; margin: 0 auto; padding: 54px 0; }}
+        .hero-block {{ min-height: 560px; display: grid; grid-template-columns: 0.95fr 1.05fr; gap: 42px; align-items: center; }}
+        h1 {{ font-size: clamp(42px, 8vw, 88px); line-height: .93; margin-bottom: 24px; letter-spacing: -0.065em; font-weight: 700; }}
+        h2 {{ font-size: clamp(30px, 5vw, 54px); line-height: 1; margin-bottom: 22px; letter-spacing: -0.04em; }}
+        p {{ font-family: Arial, sans-serif; font-size: 18px; line-height: 1.75; opacity: .88; }}
+        .button-row {{ display: flex; gap: 13px; flex-wrap: wrap; margin-top: 30px; }}
+        .site-btn {{ display: inline-block; padding: 15px 22px; border-radius: 999px; background: {accent}; color: #fff; text-decoration: none; font-family: Arial, sans-serif; font-weight: 800; box-shadow: 0 12px 30px {accent}55; }}
+        .site-btn-outline {{ background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.30); color: {text}; box-shadow: none; }}
+        .hero-visual {{ min-height: 430px; position: relative; background: {surface}; border-radius: 48px 48px 48px 8px; box-shadow: 0 32px 80px rgba(0,0,0,.34); overflow: hidden; transform: rotate(1deg); }}
+        .hero-image {{ width: 100%; height: 100%; min-height: 430px; object-fit: cover; display: block; filter: saturate(1.05) contrast(1.03); }}
+        .hero-visual::after {{ content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 50%, rgba(0,0,0,.34)); pointer-events: none; }}
+        .content-section {{ margin: 30px 0; padding: clamp(28px, 5vw, 52px); background: rgba(255,255,255,.11); border: 1px solid rgba(255,255,255,.16); border-radius: 38px; box-shadow: 0 20px 60px rgba(0,0,0,.20); }}
+        .features-grid, .contact-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }}
+        .feature-item, .contact-grid div {{ padding: 24px; background: rgba(255,255,255,.13); border: 1px solid rgba(255,255,255,.16); border-radius: 28px; }}
+        .feature-item strong, .contact-grid strong {{ display: block; font-family: Arial, sans-serif; font-size: 18px; margin-bottom: 10px; }}
+        .page-heading {{ padding: 48px 0 12px; }}
         @media (max-width: 850px) {{
             .site-header {{ flex-direction: column; align-items: flex-start; }}
             .page-wrapper {{ width: 90%; }}

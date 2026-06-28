@@ -145,6 +145,8 @@ def generate_site_with_gemini(
 - лендинг — одна страница;
 - многостраничный сайт — от 2 до 5 страниц;
 - ИИ сам выбирает стиль, фон, цветовую схему, расположение блоков, названия блоков, тексты и кнопки;
+- готовый сайт НЕ должен визуально копировать интерфейс HGGps: не используй одинаковую структуру, одинаковые красно-чёрные карточки и одинаковый стиль конструктора;
+- дизайн должен соответствовать бизнесу пользователя: можно выбирать светлый, природный, премиальный, творческий, деловой или другой стиль;
 - пользователь только описывает проект, желаемое оформление, нужную информацию, контакты и количество кнопок;
 - если пользователь не указал телефон или email, используй переданные резервные значения;
 - сайт должен быть готов к предпросмотру и публикации по ссылке;
@@ -224,6 +226,10 @@ Email для контактов:
           "type": "hero",
           "title": "Главный заголовок",
           "subtitle": "Подзаголовок",
+          "image": {{
+            "category": "одна категория из списка: coffee, food, beauty, fitness, yoga, education, business, portfolio, event, technology, interior, travel, health, creative, default",
+            "alt": "Короткое описание изображения"
+          }},
           "buttons": [
             {{"text": "Текст кнопки", "target": "#contacts"}}
           ]
@@ -254,6 +260,7 @@ Email для контактов:
 
 Правила генерации:
 1. Все тексты на русском языке.
+1.1. Все кнопки должны быть рабочими: target используй только "#contacts", "tel:{contact_phone}" или "mailto:{contact_email}". Не используй пустые ссылки, "#", "javascript:void(0)" и несуществующие якоря.
 2. Если пользователь указал название компании отдельным полем, siteName должен быть точно этим названием.
 3. Если отдельное поле пустое, но в описании явно указано название компании, используй его как siteName.
 4. Если названия нет, придумай короткое естественное название сам.
@@ -268,6 +275,8 @@ Email для контактов:
 13. Структура блоков должна отличаться при перегенерации, если есть предыдущий вариант.
 14. JSON должен быть корректным.
 15. Не выводи на сайте технические фразы: Gemini, provider, model, сгенерировано ИИ, стиль ИИ, объяснение логики блоков.
+16. Для hero-блока обязательно выбери image.category по смыслу проекта. Например: кофейня -> coffee/food, йога -> yoga/fitness, салон красоты -> beauty, школа -> education, IT -> technology, мероприятие -> event, портфолио -> portfolio.
+17. Не генерируй прямые URL картинок. Верни только смысловую категорию изображения и alt. Backend сам подставит подходящее изображение.
 """
 
     response = client.models.generate_content(
@@ -300,6 +309,7 @@ def normalize_generated_site(site_json: dict[str, Any], site_type: str, email: s
 
     resolved_name = resolve_site_name(company_name, description, site_json.get("siteName"))
     site_json["siteName"] = resolved_name
+    guessed_image_category = guess_image_category(" ".join([description, str(site_json.get("siteName", "")), str(site_json.get("goal", ""))]))
 
     pages = site_json.get("pages")
     if not isinstance(pages, list) or not pages:
@@ -331,6 +341,7 @@ def normalize_generated_site(site_json: dict[str, Any], site_type: str, email: s
             "type": "hero",
             "title": site_json.get("siteName", "Сайт для вашего проекта"),
             "subtitle": "Сайт сгенерирован на основе описания пользователя.",
+            "image": {"category": guessed_image_category, "alt": f"Изображение для сайта {site_json.get('siteName', '')}"},
             "buttons": [{"text": "Оставить заявку", "target": "#contacts"}],
         })
 
@@ -346,6 +357,7 @@ def normalize_generated_site(site_json: dict[str, Any], site_type: str, email: s
         while len(buttons) < button_count:
             buttons.append({"text": f"Действие {len(buttons) + 1}", "target": "#contacts"})
         hero["buttons"] = normalize_buttons(buttons[:button_count], phone, email)
+        normalize_image(hero, guessed_image_category, resolved_name)
 
     if not any(any(sec.get("type") == "contact" for sec in page.get("sections", [])) for page in pages):
         pages[-1]["sections"].append({
@@ -385,6 +397,7 @@ def normalize_generated_site(site_json: dict[str, Any], site_type: str, email: s
     design.setdefault("textColor", "#ffffff")
     design.setdefault("surfaceColor", "#12121a")
     design.setdefault("fontMood", "Современный простой интерфейс")
+    design.setdefault("imageCategory", guessed_image_category)
     site_json["design"] = sanitize_design(design)
 
     return site_json
@@ -405,6 +418,7 @@ def sanitize_design(design: dict[str, Any]) -> dict[str, str]:
         "textColor": color(design.get("textColor"), "#ffffff"),
         "surfaceColor": color(design.get("surfaceColor"), "#12121a"),
         "fontMood": str(design.get("fontMood") or "Современный простой интерфейс")[:120],
+        "imageCategory": str(design.get("imageCategory") or "default").strip().lower()[:40],
     }
 
 
@@ -444,6 +458,38 @@ def extract_company_name(description: str) -> str:
             return match.group(1).strip()
     return ""
 
+
+
+def guess_image_category(text: str) -> str:
+    value = (text or "").lower()
+    rules = [
+        ("coffee", ["кофе", "кофейн", "кафе", "бариста"]),
+        ("food", ["еда", "ресторан", "меню", "десерт", "пицц", "суши"]),
+        ("beauty", ["красот", "салон", "маникюр", "космет", "парикмах", "бров"]),
+        ("yoga", ["йога", "пилатес", "растяж"]),
+        ("fitness", ["фитнес", "спорт", "трениров", "зал"]),
+        ("education", ["школ", "курс", "обуч", "репетитор", "образован"]),
+        ("technology", ["it", "айти", "сайт", "прилож", "технолог", "стартап"]),
+        ("event", ["мероприят", "конферен", "фестиваль", "выставк", "событ"]),
+        ("portfolio", ["портфолио", "фотограф", "дизайн", "работы", "кейсы"]),
+        ("health", ["клиник", "здоров", "медиц", "врач"]),
+        ("travel", ["тур", "путешеств", "отель", "гостиниц"]),
+        ("business", ["бизнес", "агентство", "компания", "консалт"]),
+    ]
+    for category, words in rules:
+        if any(word in value for word in words):
+            return category
+    return "default"
+
+
+def normalize_image(section: dict[str, Any], category: str, site_name: str) -> None:
+    image = section.get("image") if isinstance(section.get("image"), dict) else {}
+    image_category = str(image.get("category") or section.get("imageCategory") or category or "default").strip().lower()
+    allowed = {"coffee", "food", "beauty", "fitness", "yoga", "education", "business", "portfolio", "event", "technology", "interior", "travel", "health", "creative", "default"}
+    if image_category not in allowed:
+        image_category = category if category in allowed else "default"
+    image_alt = str(image.get("alt") or section.get("imageAlt") or f"Изображение для сайта {site_name}").strip()[:120]
+    section["image"] = {"category": image_category, "alt": image_alt}
 
 def normalize_buttons(buttons: list[Any], phone: str, email: str) -> list[dict[str, str]]:
     normalized: list[dict[str, str]] = []
@@ -518,6 +564,7 @@ def generate_mock_site(
                     "type": "hero",
                     "title": title,
                     "subtitle": description[:280],
+                    "image": {"category": guess_image_category(description), "alt": f"Изображение для сайта {title}"},
                     "buttons": [
                         {"text": hero_buttons[index % len(hero_buttons)], "target": "#contacts"}
                         for index in range(button_count)
