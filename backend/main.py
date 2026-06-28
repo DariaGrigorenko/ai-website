@@ -86,7 +86,6 @@ def render_section(section: dict[str, Any], page_index: int) -> str:
         return f"""
         <section class="hero-block">
             <div class="hero-content">
-                <span class="badge">Сгенерировано ИИ</span>
                 <h1>{title}</h1>
                 <p>{subtitle}</p>
                 <div class="button-row">{render_buttons(buttons)}</div>
@@ -167,12 +166,6 @@ def render_site_html(site_json: dict[str, Any]) -> str:
     text = css_color(site_json, "textColor", "#ffffff")
     surface = css_color(site_json, "surfaceColor", "#12121a")
 
-    style_name = escape(str(design.get("styleName") or "Стиль выбран ИИ"))
-    background = escape(str(design.get("background") or "Фон выбран ИИ"))
-    layout_reason = escape(str(design.get("layoutReason") or "Блоки размещены автоматически"))
-    generated_by = escape(str(site_json.get("_generatedBy", "unknown")))
-    ai_model = escape(str(site_json.get("_aiModel", "")))
-
     menu_html = ""
     content_html = ""
 
@@ -240,11 +233,10 @@ def render_site_html(site_json: dict[str, Any]) -> str:
         .features-grid, .contact-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }}
         .feature-item, .contact-grid div {{ padding: 22px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); border-radius: 20px; }}
         .feature-item strong, .contact-grid strong {{ display: block; font-size: 18px; margin-bottom: 8px; }}
-        .design-info {{ width: 84%; max-width: 1180px; margin: 28px auto 0; padding: 16px 0; color: {text}; opacity: .72; font-size: 14px; }}
         .page-heading {{ padding: 44px 0 12px; }}
         @media (max-width: 850px) {{
             .site-header {{ flex-direction: column; align-items: flex-start; }}
-            .page-wrapper, .design-info {{ width: 90%; }}
+            .page-wrapper {{ width: 90%; }}
             .hero-block, .features-grid, .contact-grid {{ grid-template-columns: 1fr; }}
             .hero-visual {{ min-height: 260px; }}
         }}
@@ -255,9 +247,6 @@ def render_site_html(site_json: dict[str, Any]) -> str:
         <a class="brand" href="#home">{site_name}</a>
         <nav>{menu_html}</nav>
     </header>
-    <div class="design-info">
-        Стиль ИИ: {style_name}. Фон: {background}. Логика блоков: {layout_reason}. Provider: {generated_by} {ai_model}
-    </div>
     {content_html}
 </body>
 </html>"""

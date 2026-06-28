@@ -206,7 +206,6 @@ async function generateSite(payload, isRegeneration) {
 
 function renderGeneratedResult(project) {
   const siteJson = project.siteJson || {};
-  const design = siteJson.design || {};
   const pages = Array.isArray(siteJson.siteMap) ? siteJson.siteMap : [];
   const contacts = siteJson.contact || {};
 
@@ -215,14 +214,10 @@ function renderGeneratedResult(project) {
   `).join("");
 
   aiSummary.innerHTML = `
-    <strong>Что сделал ИИ:</strong><br>
+    <strong>Сайт готов:</strong><br>
     Название: ${escapeHtml(siteJson.siteName || project.name)}<br>
     Тип: ${escapeHtml(siteJson.siteType || project.siteType)}<br>
-    Стиль: ${escapeHtml(design.styleName || "Выбран ИИ")}<br>
-    Фон: ${escapeHtml(design.background || "Выбран ИИ")}<br>
-    Размещение блоков: ${escapeHtml(design.layoutReason || "Выбрано ИИ")}<br>
-    Контакты: ${escapeHtml(contacts.phone || "")} · ${escapeHtml(contacts.email || "")}<br>
-    Provider: ${escapeHtml(project.generatedBy || "unknown")} ${escapeHtml(project.aiModel || "")}
+    Контакты: ${escapeHtml(contacts.phone || "")} · ${escapeHtml(contacts.email || "")}
     <ul>${pagesHtml}</ul>
   `;
 
