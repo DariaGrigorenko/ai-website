@@ -30,6 +30,7 @@ app.add_middleware(
 
 class GenerateProjectRequest(BaseModel):
     description: str = Field(..., min_length=10)
+    companyName: str = Field(default="")
     siteType: str = Field(default="Лендинг")
     goal: str = Field(default="Создать сайт")
     designPreferences: str = Field(default="")
@@ -67,7 +68,11 @@ def render_buttons(buttons: list[dict[str, Any]]) -> str:
     html = ""
     for index, button in enumerate(buttons):
         text = escape(str(button.get("text") or f"Кнопка {index + 1}"))
-        target = escape(str(button.get("target") or "#contacts"))
+        raw_target = str(button.get("target") or "#contacts").strip()
+        if raw_target.startswith("tel:") or raw_target.startswith("mailto:") or raw_target.startswith("http://") or raw_target.startswith("https://"):
+            target = escape(raw_target)
+        else:
+            target = "#contacts"
         class_name = "site-btn" if index == 0 else "site-btn site-btn-outline"
         html += f'<a class="{class_name}" href="{target}">{text}</a>'
     return html
@@ -268,6 +273,7 @@ def generate_project(data: GenerateProjectRequest, request: Request):
         description=data.description,
         site_type=data.siteType,
         goal=data.goal,
+        company_name=data.companyName,
         design_preferences=data.designPreferences,
         desired_info=data.desiredInfo,
         contact_email=data.contactEmail,
@@ -287,6 +293,7 @@ def generate_project(data: GenerateProjectRequest, request: Request):
         "id": project_id,
         "name": site_json.get("siteName", "Сайт"),
         "description": data.description,
+        "companyName": data.companyName,
         "siteType": data.siteType,
         "goal": data.goal,
         "designPreferences": data.designPreferences,

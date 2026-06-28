@@ -21,6 +21,7 @@ const indicators = [
 ];
 
 const projectDescription = document.getElementById("projectDescription");
+const companyName = document.getElementById("companyName");
 const siteType = document.getElementById("siteType");
 const goal = document.getElementById("goal");
 const designPreferences = document.getElementById("designPreferences");
@@ -96,6 +97,7 @@ function validateFirstStep() {
 function buildPayload(extra = {}) {
   return {
     description: projectDescription.value.trim(),
+    companyName: companyName.value.trim(),
     siteType: siteType.value,
     goal: goal.value,
     designPreferences: designPreferences.value.trim(),
@@ -113,6 +115,7 @@ function renderLocalDraft() {
       <div>
         <strong>ИИ подготовит сайт по этим данным:</strong><br><br>
         ${escapeHtml(projectDescription.value.trim())}<br><br>
+        Название: ${escapeHtml(companyName.value.trim() || "ИИ определит или придумает сам")}<br>
         Тип сайта: ${escapeHtml(siteType.value)}<br>
         Цель: ${escapeHtml(goal.value)}
       </div>

@@ -55,6 +55,7 @@ def generate_site(
     description: str,
     site_type: str,
     goal: str,
+    company_name: str = "",
     design_preferences: str = "",
     desired_info: str = "",
     contact_email: str | None = None,
@@ -72,6 +73,7 @@ def generate_site(
             description=description,
             site_type=site_type,
             goal=goal,
+            company_name=company_name,
             design_preferences=design_preferences,
             desired_info=desired_info,
             contact_email=email,
@@ -88,6 +90,7 @@ def generate_site(
             description=description,
             site_type=site_type,
             goal=goal,
+            company_name=company_name,
             design_preferences=design_preferences,
             desired_info=desired_info,
             contact_email=email,
@@ -110,6 +113,7 @@ def generate_site_with_gemini(
     description: str,
     site_type: str,
     goal: str,
+    company_name: str,
     design_preferences: str,
     desired_info: str,
     contact_email: str,
@@ -150,11 +154,23 @@ def generate_site_with_gemini(
 Описание проекта:
 {description}
 
+Название компании, если пользователь указал отдельным полем:
+{company_name or "Пользователь не указал отдельным полем. Если в описании есть явное название компании, используй его. Если названия нет, придумай короткое подходящее название сам."}
+
 Тип сайта:
 {site_type}
 
 Цель сайта:
 {goal}
+
+ВАЖНО: главная цель сайта — это главный параметр генерации. От неё должны зависеть структура сайта, порядок блоков, тексты, кнопки, названия страниц и финальный призыв к действию.
+
+Если цель = "Получить заявки": делай сайт продающим, с упором на преимущества, доверие, форму/контакты и кнопки "Оставить заявку", "Получить консультацию".
+Если цель = "Записать клиента": делай упор на запись, расписание, услуги, удобство, кнопки "Записаться", "Выбрать время", "Написать для записи".
+Если цель = "Рассказать о компании": делай упор на историю, ценности, команду, преимущества, доверие, кнопки "Узнать больше", "Связаться".
+Если цель = "Показать услуги": делай упор на список услуг, карточки услуг, цены/этапы/преимущества, кнопки "Выбрать услугу", "Получить консультацию".
+Если цель = "Показать портфолио": делай упор на работы, кейсы, опыт, результаты, кнопки "Посмотреть работы", "Обсудить проект".
+Если цель = "Рассказать о мероприятии": делай упор на дату, программу, место, расписание, регистрацию, кнопки "Зарегистрироваться", "Посмотреть программу".
 
 Как пользователь хочет видеть оформление:
 {design_preferences or "Пользователь не указал подробно. Выбери оформление самостоятельно по смыслу проекта."}
@@ -177,7 +193,7 @@ Email для контактов:
 
 Строгая структура JSON:
 {{
-  "siteName": "Короткое название сайта",
+  "siteName": "Название компании или придуманное название сайта",
   "siteType": "Лендинг или Многостраничный сайт",
   "goal": "Главная цель сайта",
   "design": {{
@@ -238,15 +254,20 @@ Email для контактов:
 
 Правила генерации:
 1. Все тексты на русском языке.
-2. Не начинай siteName со слов "Описание проекта".
-3. Для лендинга создай ровно 1 страницу со slug "/".
-4. Для многостраничного сайта создай от 2 до 5 страниц. Разрешённые страницы: Главная, О нас, Услуги, Портфолио, Команда, FAQ, Контакты, Меню, Каталог, Расписание.
-5. siteMap должен совпадать с pages.
-6. Количество кнопок в hero на главной странице должно быть равно {button_count}; если кнопок много, делай разные действия.
-7. В каждом сайте обязательно должен быть контактный блок с phone="{contact_phone}" и email="{contact_email}".
-8. ИИ сам выбирает визуальный стиль и layout по описанию пользователя, не спрашивая выбор из готовых вариантов.
-9. Структура блоков должна отличаться при перегенерации, если есть предыдущий вариант.
-10. JSON должен быть корректным.
+2. Если пользователь указал название компании отдельным полем, siteName должен быть точно этим названием.
+3. Если отдельное поле пустое, но в описании явно указано название компании, используй его как siteName.
+4. Если названия нет, придумай короткое естественное название сам.
+5. Не начинай siteName со слов "Описание проекта", "Сайт для", "Проект".
+6. Для лендинга создай ровно 1 страницу со slug "/".
+7. Для многостраничного сайта создай от 2 до 5 страниц. Разрешённые страницы: Главная, О нас, Услуги, Портфолио, Команда, FAQ, Контакты, Меню, Каталог, Расписание.
+8. siteMap должен совпадать с pages.
+9. Количество кнопок в hero на главной странице должно быть равно {button_count}. Все кнопки должны вести к контактам, заявке, телефону или email, чтобы они реально работали. Тексты кнопок обязательно должны соответствовать выбранной цели сайта.
+10. Главный экран, порядок блоков и siteMap должны быть разными для разных целей сайта. Нельзя делать одинаковую структуру для всех целей.
+11. В каждом сайте обязательно должен быть контактный блок с phone="{contact_phone}" и email="{contact_email}".
+12. ИИ сам выбирает визуальный стиль и layout по описанию пользователя, не спрашивая выбор из готовых вариантов.
+13. Структура блоков должна отличаться при перегенерации, если есть предыдущий вариант.
+14. JSON должен быть корректным.
+15. Не выводи на сайте технические фразы: Gemini, provider, model, сгенерировано ИИ, стиль ИИ, объяснение логики блоков.
 """
 
     response = client.models.generate_content(
@@ -271,11 +292,14 @@ Email для контактов:
             raise ValueError("Gemini returned invalid JSON")
         site_json = json.loads(raw_text[start:end])
 
-    return normalize_generated_site(site_json, site_type, contact_email, contact_phone, button_count)
+    return normalize_generated_site(site_json, site_type, contact_email, contact_phone, button_count, company_name, description)
 
 
-def normalize_generated_site(site_json: dict[str, Any], site_type: str, email: str, phone: str, button_count: int) -> dict[str, Any]:
+def normalize_generated_site(site_json: dict[str, Any], site_type: str, email: str, phone: str, button_count: int, company_name: str = "", description: str = "") -> dict[str, Any]:
     site_json["siteType"] = "Многостраничный сайт" if "много" in site_type.lower() else "Лендинг"
+
+    resolved_name = resolve_site_name(company_name, description, site_json.get("siteName"))
+    site_json["siteName"] = resolved_name
 
     pages = site_json.get("pages")
     if not isinstance(pages, list) or not pages:
@@ -312,13 +336,16 @@ def normalize_generated_site(site_json: dict[str, Any], site_type: str, email: s
 
     hero = next((sec for sec in pages[0]["sections"] if sec.get("type") == "hero"), None)
     if hero is not None:
+        hero_title = str(hero.get("title") or "").strip()
+        if resolved_name and resolved_name.lower() not in hero_title.lower():
+            hero["title"] = f"{resolved_name} — {hero_title}" if hero_title else resolved_name
         buttons = hero.get("buttons")
         if not isinstance(buttons, list):
             old_text = hero.get("buttonText", "Оставить заявку")
             buttons = [{"text": old_text, "target": "#contacts"}]
         while len(buttons) < button_count:
             buttons.append({"text": f"Действие {len(buttons) + 1}", "target": "#contacts"})
-        hero["buttons"] = buttons[:button_count]
+        hero["buttons"] = normalize_buttons(buttons[:button_count], phone, email)
 
     if not any(any(sec.get("type") == "contact" for sec in page.get("sections", [])) for page in pages):
         pages[-1]["sections"].append({
@@ -381,18 +408,105 @@ def sanitize_design(design: dict[str, Any]) -> dict[str, str]:
     }
 
 
+
+def resolve_site_name(company_name: str | None, description: str, ai_name: Any) -> str:
+    company_name = (company_name or "").strip()
+    if company_name:
+        return clean_site_name(company_name)
+
+    extracted = extract_company_name(description)
+    if extracted:
+        return clean_site_name(extracted)
+
+    ai_name = clean_site_name(str(ai_name or ""))
+    bad_prefixes = ("описание проекта", "сайт для", "проект", "главная")
+    if ai_name and len(ai_name) >= 3 and not ai_name.lower().startswith(bad_prefixes):
+        return ai_name
+
+    return make_title(description)
+
+
+def clean_site_name(value: str) -> str:
+    value = re.sub(r"\s+", " ", value or "").strip(" .,:;—-")
+    return value[:70] if value else "Сайт для вашего проекта"
+
+
+def extract_company_name(description: str) -> str:
+    text = description or ""
+    patterns = [
+        r"(?:компания|бренд|название|студия|кафе|кофейня|салон|школа|агентство)\s+(?:называется\s+)?[«\"']([^»\"'.,\n]{2,50})[»\"']",
+        r"[«\"']([^»\"'.,\n]{2,50})[»\"']",
+        r"(?:компания|бренд|название)\s+(?:—|-|:)\s*([^.,\n]{2,50})",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text, flags=re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+    return ""
+
+
+def normalize_buttons(buttons: list[Any], phone: str, email: str) -> list[dict[str, str]]:
+    normalized: list[dict[str, str]] = []
+    for index, button in enumerate(buttons):
+        if isinstance(button, dict):
+            text = str(button.get("text") or f"Кнопка {index + 1}").strip()
+        else:
+            text = str(button or f"Кнопка {index + 1}").strip()
+
+        lower = text.lower()
+        if any(word in lower for word in ["позвон", "звон", "телефон"]):
+            target = "tel:" + re.sub(r"[^0-9+]", "", phone)
+        elif any(word in lower for word in ["почт", "email", "mail", "напис"]):
+            target = "mailto:" + email
+        else:
+            target = "#contacts"
+
+        normalized.append({"text": text[:40] or f"Кнопка {index + 1}", "target": target})
+    return normalized
+
 def generate_mock_site(
     description: str,
     site_type: str,
     goal: str,
+    company_name: str,
     design_preferences: str,
     desired_info: str,
     contact_email: str,
     contact_phone: str,
     button_count: int,
 ) -> dict[str, Any]:
-    title = make_title(description)
+    title = resolve_site_name(company_name, description, make_title(description))
     is_multi = "много" in site_type.lower()
+
+    goal_lower = goal.lower()
+    if "заяв" in goal_lower:
+        hero_buttons = ["Оставить заявку", "Получить консультацию", "Связаться"]
+        features_title = "Почему стоит оставить заявку"
+        text_title = "Как мы поможем"
+    elif "запис" in goal_lower:
+        hero_buttons = ["Записаться", "Выбрать время", "Написать для записи"]
+        features_title = "Почему удобно записаться"
+        text_title = "Как проходит запись"
+    elif "компан" in goal_lower:
+        hero_buttons = ["Узнать больше", "Связаться", "Посмотреть услуги"]
+        features_title = "О компании"
+        text_title = "Кто мы и чем полезны"
+    elif "услуг" in goal_lower:
+        hero_buttons = ["Выбрать услугу", "Получить консультацию", "Уточнить стоимость"]
+        features_title = "Основные услуги"
+        text_title = "Что входит в услуги"
+    elif "портф" in goal_lower:
+        hero_buttons = ["Посмотреть работы", "Обсудить проект", "Связаться"]
+        features_title = "Работы и опыт"
+        text_title = "Что можно увидеть в портфолио"
+    elif "мероприят" in goal_lower:
+        hero_buttons = ["Зарегистрироваться", "Посмотреть программу", "Уточнить детали"]
+        features_title = "Почему стоит участвовать"
+        text_title = "О мероприятии"
+    else:
+        hero_buttons = ["Оставить заявку", "Подробнее", "Связаться"]
+        features_title = "Преимущества"
+        text_title = "Что будет на сайте"
 
     pages = [
         {
@@ -405,13 +519,13 @@ def generate_mock_site(
                     "title": title,
                     "subtitle": description[:280],
                     "buttons": [
-                        {"text": "Оставить заявку", "target": "#contacts"}
-                        for _ in range(button_count)
+                        {"text": hero_buttons[index % len(hero_buttons)], "target": "#contacts"}
+                        for index in range(button_count)
                     ],
                 },
                 {
                     "type": "features",
-                    "title": "Преимущества",
+                    "title": features_title,
                     "items": [
                         {"title": "Быстрый запуск", "description": "Сайт собирается за несколько минут."},
                         {"title": "ИИ-структура", "description": "Блоки и тексты подбираются автоматически."},
@@ -420,7 +534,7 @@ def generate_mock_site(
                 },
                 {
                     "type": "text",
-                    "title": "Что будет на сайте",
+                    "title": text_title,
                     "description": desired_info or "ИИ подобрал базовые блоки по описанию проекта.",
                 },
                 {
@@ -465,7 +579,7 @@ def generate_mock_site(
         },
         "pages": pages,
     }
-    return normalize_generated_site(site_json, site_type, contact_email, contact_phone, button_count)
+    return normalize_generated_site(site_json, site_type, contact_email, contact_phone, button_count, company_name, description)
 
 
 def validate_site_json(site_json: dict[str, Any]) -> None:

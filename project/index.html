@@ -58,13 +58,16 @@
     <div class="constructor-layout">
       <div class="panel">
         <div class="stage active" id="stage1">
-          <h3>Шаг 1. Опиши проект</h3>
+          <h3>Шаг 1. Расскажи о проекте</h3>
           <p class="stage-description">
-            Здесь пользователь объясняет, какой сайт ему нужен. Типов сайта только два: лендинг или многостраничный сайт.
+            Опиши, чем занимается проект, для кого он нужен и что должен увидеть посетитель.
           </p>
 
           <label for="projectDescription">Описание проекта</label>
           <textarea id="projectDescription" placeholder="Например: сайт для кофейни в Москве. Нужно показать меню, атмосферу, адрес и возможность оставить заявку."></textarea>
+
+          <label for="companyName">Название компании</label>
+          <input id="companyName" type="text" placeholder="Например: Coffee Time. Можно оставить пустым">
 
           <label for="siteType">Тип сайта</label>
           <select id="siteType">
@@ -87,9 +90,9 @@
         </div>
 
         <div class="stage" id="stage2">
-          <h3>Шаг 2. Что должен понять ИИ</h3>
+          <h3>Шаг 2. Пожелания к сайту</h3>
           <p class="stage-description">
-            Не выбирай фон и расположение блоков из списка. Просто опиши, каким хочешь видеть сайт, а ИИ сам выберет стиль, фон и структуру.
+            Напиши, что должно быть на сайте и каким ты хочешь видеть результат.
           </p>
 
           <label for="designPreferences">Как ты хочешь видеть оформление сайта?</label>
