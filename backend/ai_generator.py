@@ -138,8 +138,10 @@ def generate_site_with_gemini(
 Предыдущий вариант сайта, который пользователю не понравился:
 {json.dumps(previous_site_json, ensure_ascii=False)[:12000]}
 
-Комментарий к перегенерации:
-{regeneration_note or "Сделай другой вариант: измени структуру, стиль, тексты и расположение блоков."}
+Комментарий пользователя к перегенерации. Это обязательное требование, его нужно выполнить в первую очередь:
+{regeneration_note or "Сделай другой вариант: измени структуру, стиль, тексты, цвета и расположение блоков."}
+
+Важно: при перегенерации нельзя просто повторять предыдущий сайт. Нужно заметно изменить цветовую палитру, композицию, акценты, тексты и порядок смысловых блоков с учётом комментария пользователя.
 """
 
     prompt = f"""
@@ -150,6 +152,9 @@ def generate_site_with_gemini(
 - лендинг — одна страница;
 - многостраничный сайт — от 2 до 5 страниц;
 - ИИ сам выбирает стиль, фон, цветовую схему, расположение блоков, названия блоков, тексты и кнопки;
+- цветовая схема должна строго учитывать пожелания пользователя: если пользователь просит тёмный сайт — используй тёмные HEX-цвета; если просит яркий — используй контрастные цвета; если просит спокойный — используй мягкую палитру;
+- не делай все сайты белыми или серыми по умолчанию; фон, карточки и акценты должны отличаться по цвету;
+- текст должен быть хорошо читаемым на выбранном фоне;
 - НЕ добавляй изображения и НЕ добавляй поля image/imageCategory/imageUrl;
 - готовый сайт НЕ должен визуально копировать интерфейс HGGps;
 - дизайн должен соответствовать бизнесу пользователя;
@@ -206,11 +211,11 @@ Email для контактов:
     "styleName": "Название выбранного ИИ стиля",
     "background": "Краткое описание фона",
     "layoutReason": "Почему ИИ выбрал такое расположение блоков",
-    "primaryColor": "#HEX",
-    "secondaryColor": "#HEX",
-    "accentColor": "#HEX",
-    "textColor": "#HEX",
-    "surfaceColor": "#HEX",
+    "primaryColor": "#HEX основной фон, не всегда белый",
+    "secondaryColor": "#HEX дополнительный фон",
+    "accentColor": "#HEX акцентный цвет кнопок",
+    "textColor": "#HEX цвет текста с хорошим контрастом",
+    "surfaceColor": "#HEX цвет карточек, отличается от основного фона",
     "fontMood": "Описание настроения шрифта"
   }},
   "siteMap": [
@@ -276,9 +281,12 @@ Email для контактов:
 16. В каждом сайте обязательно должен быть контактный блок с anchorId="contacts", phone="{contact_phone}" и email="{contact_email}".
 17. ИИ сам выбирает визуальный стиль и layout по описанию пользователя.
 18. Структура блоков должна отличаться при перегенерации, если есть предыдущий вариант.
-19. JSON должен быть корректным.
-20. Не выводи на сайте технические фразы: Gemini, provider, model, сгенерировано ИИ, стиль ИИ, объяснение логики блоков.
-21. Не генерируй изображения и не добавляй image-поля.
+19. При перегенерации обязательно учитывай комментарий пользователя и меняй именно то, что он попросил изменить.
+20. Цвета в design должны быть реальными HEX-цветами и соответствовать описанию оформления. Не ставь белый фон, если пользователь просит другой стиль.
+21. Если пользователь просит тёмный, дорогой, неоновый, яркий, природный, кофейный, спортивный, детский или другой стиль — цветовая палитра должна явно это отражать.
+22. JSON должен быть корректным.
+23. Не выводи на сайте технические фразы: Gemini, provider, model, сгенерировано ИИ, стиль ИИ, объяснение логики блоков.
+24. Не генерируй изображения и не добавляй image-поля.
 """
 
     response = client.models.generate_content(
@@ -415,16 +423,24 @@ def normalize_generated_site(site_json: dict[str, Any], site_type: str, email: s
     design = site_json.get("design")
     if not isinstance(design, dict):
         design = {}
-    design.setdefault("styleName", "Индивидуальный стиль")
-    design.setdefault("background", "Фон подобран по тематике проекта")
+
+    palette = choose_fallback_palette(
+        description=description,
+        design_preferences=str(design.get("background") or "") + " " + str(design.get("styleName") or ""),
+        goal=str(site_json.get("goal") or ""),
+        site_name=str(site_json.get("siteName") or ""),
+    )
+
+    design.setdefault("styleName", palette["styleName"])
+    design.setdefault("background", palette["background"])
     design.setdefault("layoutReason", "Блоки расположены по смыслу запроса пользователя.")
-    design.setdefault("primaryColor", "#f6efe7")
-    design.setdefault("secondaryColor", "#fffaf3")
-    design.setdefault("accentColor", "#7c4a2d")
-    design.setdefault("textColor", "#201915")
-    design.setdefault("surfaceColor", "#ffffff")
-    design.setdefault("fontMood", "Чистый современный стиль")
-    site_json["design"] = sanitize_design(design)
+    design.setdefault("primaryColor", palette["primaryColor"])
+    design.setdefault("secondaryColor", palette["secondaryColor"])
+    design.setdefault("accentColor", palette["accentColor"])
+    design.setdefault("textColor", palette["textColor"])
+    design.setdefault("surfaceColor", palette["surfaceColor"])
+    design.setdefault("fontMood", palette["fontMood"])
+    site_json["design"] = sanitize_design(design, palette)
     return site_json
 
 
@@ -550,23 +566,175 @@ def default_button_text(index: int, goal: str) -> str:
     return variants[index % len(variants)]
 
 
-def sanitize_design(design: dict[str, Any]) -> dict[str, str]:
+def choose_fallback_palette(description: str = "", design_preferences: str = "", goal: str = "", site_name: str = "") -> dict[str, str]:
+    text = f"{description} {design_preferences} {goal} {site_name}".lower()
+
+    palettes = {
+        "dark": {
+            "styleName": "Тёмный контрастный стиль",
+            "background": "Тёмный фон с яркими акцентами",
+            "primaryColor": "#10111f",
+            "secondaryColor": "#1f1b35",
+            "accentColor": "#a855f7",
+            "textColor": "#f8fafc",
+            "surfaceColor": "#191827",
+            "fontMood": "Современный контрастный шрифт",
+        },
+        "coffee": {
+            "styleName": "Тёплый кофейный стиль",
+            "background": "Тёплый фон в кофейных и кремовых оттенках",
+            "primaryColor": "#2b1a12",
+            "secondaryColor": "#ead7bd",
+            "accentColor": "#b86b35",
+            "textColor": "#fff7ed",
+            "surfaceColor": "#4a2d1f",
+            "fontMood": "Мягкий уютный шрифт",
+        },
+        "beauty": {
+            "styleName": "Мягкий beauty-стиль",
+            "background": "Нежный фон с розовыми и светлыми акцентами",
+            "primaryColor": "#fff1f6",
+            "secondaryColor": "#f8d7e7",
+            "accentColor": "#c026d3",
+            "textColor": "#301323",
+            "surfaceColor": "#ffffff",
+            "fontMood": "Элегантный мягкий шрифт",
+        },
+        "nature": {
+            "styleName": "Природный спокойный стиль",
+            "background": "Натуральный фон в зелёных и светлых оттенках",
+            "primaryColor": "#10251e",
+            "secondaryColor": "#dbe8d5",
+            "accentColor": "#3f7d58",
+            "textColor": "#f7fff8",
+            "surfaceColor": "#1e3a2e",
+            "fontMood": "Спокойный чистый шрифт",
+        },
+        "sport": {
+            "styleName": "Энергичный спортивный стиль",
+            "background": "Контрастный фон с динамичными акцентами",
+            "primaryColor": "#111827",
+            "secondaryColor": "#1f2937",
+            "accentColor": "#f97316",
+            "textColor": "#f9fafb",
+            "surfaceColor": "#182033",
+            "fontMood": "Сильный уверенный шрифт",
+        },
+        "tech": {
+            "styleName": "Технологичный стиль",
+            "background": "Глубокий технологичный фон с холодными акцентами",
+            "primaryColor": "#07111f",
+            "secondaryColor": "#0f2a3f",
+            "accentColor": "#22d3ee",
+            "textColor": "#e0f2fe",
+            "surfaceColor": "#0b1b2b",
+            "fontMood": "Чёткий технологичный шрифт",
+        },
+        "bright": {
+            "styleName": "Яркий современный стиль",
+            "background": "Яркий фон с насыщенными акцентами",
+            "primaryColor": "#fff7ed",
+            "secondaryColor": "#fee2e2",
+            "accentColor": "#ef4444",
+            "textColor": "#2b1111",
+            "surfaceColor": "#ffffff",
+            "fontMood": "Дружелюбный современный шрифт",
+        },
+        "default": {
+            "styleName": "Индивидуальный современный стиль",
+            "background": "Фон подобран по тематике проекта",
+            "primaryColor": "#171321",
+            "secondaryColor": "#2c1d3a",
+            "accentColor": "#f59e0b",
+            "textColor": "#fff7ed",
+            "surfaceColor": "#241b2f",
+            "fontMood": "Современный выразительный шрифт",
+        },
+    }
+
+    if any(word in text for word in ["тём", "темн", "черн", "black", "dark", "неон", "премиум"]):
+        return palettes["dark"]
+    if any(word in text for word in ["коф", "кафе", "шаур", "еда", "ресторан", "бар", "пекар"]):
+        return palettes["coffee"]
+    if any(word in text for word in ["салон", "крас", "beauty", "макияж", "ногт", "бров"]):
+        return palettes["beauty"]
+    if any(word in text for word in ["йог", "эко", "природ", "зел", "цвет", "сад"]):
+        return palettes["nature"]
+    if any(word in text for word in ["спорт", "фитнес", "зал", "трен", "бокс"]):
+        return palettes["sport"]
+    if any(word in text for word in ["it", "айти", "тех", "софт", "прилож", "стартап", "цифр"]):
+        return palettes["tech"]
+    if any(word in text for word in ["ярк", "дет", "празд", "фестив", "ивент"]):
+        return palettes["bright"]
+    return palettes["default"]
+
+
+def sanitize_design(design: dict[str, Any], fallback_palette: dict[str, str] | None = None) -> dict[str, str]:
+    fallback_palette = fallback_palette or choose_fallback_palette()
+
     def color(value: Any, fallback: str) -> str:
         value = str(value or "").strip()
         return value if re.fullmatch(r"#[0-9a-fA-F]{6}", value) else fallback
 
-    return {
-        "styleName": str(design.get("styleName") or "Индивидуальный стиль")[:80],
-        "background": str(design.get("background") or "Фон подобран по проекту")[:220],
+    result = {
+        "styleName": str(design.get("styleName") or fallback_palette["styleName"])[:80],
+        "background": str(design.get("background") or fallback_palette["background"])[:220],
         "layoutReason": str(design.get("layoutReason") or "Структура выбрана по описанию пользователя")[:300],
-        "primaryColor": color(design.get("primaryColor"), "#f6efe7"),
-        "secondaryColor": color(design.get("secondaryColor"), "#fffaf3"),
-        "accentColor": color(design.get("accentColor"), "#7c4a2d"),
-        "textColor": color(design.get("textColor"), "#201915"),
-        "surfaceColor": color(design.get("surfaceColor"), "#ffffff"),
-        "fontMood": str(design.get("fontMood") or "Чистый современный стиль")[:120],
+        "primaryColor": color(design.get("primaryColor"), fallback_palette["primaryColor"]),
+        "secondaryColor": color(design.get("secondaryColor"), fallback_palette["secondaryColor"]),
+        "accentColor": color(design.get("accentColor"), fallback_palette["accentColor"]),
+        "textColor": color(design.get("textColor"), fallback_palette["textColor"]),
+        "surfaceColor": color(design.get("surfaceColor"), fallback_palette["surfaceColor"]),
+        "fontMood": str(design.get("fontMood") or fallback_palette["fontMood"])[:120],
     }
 
+    # Если Gemini вернул почти белую палитру по умолчанию, заменяем её на осмысленную.
+    if is_too_white_palette(result):
+        result.update({
+            "primaryColor": fallback_palette["primaryColor"],
+            "secondaryColor": fallback_palette["secondaryColor"],
+            "accentColor": fallback_palette["accentColor"],
+            "textColor": fallback_palette["textColor"],
+            "surfaceColor": fallback_palette["surfaceColor"],
+        })
+
+    result["textColor"] = ensure_readable_text(result["textColor"], result["primaryColor"], result["surfaceColor"])
+    return result
+
+
+def hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
+    hex_color = hex_color.strip().lstrip("#")
+    return int(hex_color[0:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16)
+
+
+def luminance(hex_color: str) -> float:
+    try:
+        r, g, b = hex_to_rgb(hex_color)
+    except Exception:
+        return 1.0
+    vals = []
+    for c in (r, g, b):
+        v = c / 255
+        vals.append(v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4)
+    return 0.2126 * vals[0] + 0.7152 * vals[1] + 0.0722 * vals[2]
+
+
+def contrast_ratio(c1: str, c2: str) -> float:
+    l1, l2 = luminance(c1), luminance(c2)
+    lighter, darker = max(l1, l2), min(l1, l2)
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def is_too_white_palette(design: dict[str, str]) -> bool:
+    colors = [design.get("primaryColor", "#ffffff"), design.get("secondaryColor", "#ffffff"), design.get("surfaceColor", "#ffffff")]
+    return sum(1 for c in colors if luminance(c) > 0.86) >= 2
+
+
+def ensure_readable_text(text_color: str, primary: str, surface: str) -> str:
+    if contrast_ratio(text_color, primary) >= 3.2 or contrast_ratio(text_color, surface) >= 3.2:
+        return text_color
+    avg = (luminance(primary) + luminance(surface)) / 2
+    return "#111827" if avg > 0.55 else "#f9fafb"
 
 def resolve_site_name(company_name: str | None, description: str, ai_name: Any) -> str:
     company_name = (company_name or "").strip()
@@ -644,20 +812,21 @@ def generate_mock_site(description: str, site_type: str, goal: str, company_name
         pages.append({"title": "Услуги", "slug": "/uslugi", "type": "services", "sections": [{"type": "text", "anchorId": "services-page", "title": "Услуги", "description": desired_info or "Описание услуг будет дополнено."}]})
         pages.append({"title": "Контакты", "slug": "/kontakty", "type": "contacts", "sections": [{"type": "contact", "anchorId": "contacts", "title": "Контакты", "phone": contact_phone, "email": contact_email, "address": "Адрес будет добавлен позже"}]})
 
+    palette = choose_fallback_palette(description, design_preferences, goal, title)
     site_json = {
         "siteName": title,
         "siteType": "Многостраничный сайт" if is_multi else "Лендинг",
         "goal": goal,
         "design": {
-            "styleName": "Индивидуальный стиль",
-            "background": design_preferences or "Фон подобран автоматически",
+            "styleName": palette["styleName"],
+            "background": design_preferences or palette["background"],
             "layoutReason": "Блоки расположены по смыслу пользовательского запроса.",
-            "primaryColor": "#f6efe7",
-            "secondaryColor": "#fffaf3",
-            "accentColor": "#7c4a2d",
-            "textColor": "#201915",
-            "surfaceColor": "#ffffff",
-            "fontMood": "Чистый современный стиль",
+            "primaryColor": palette["primaryColor"],
+            "secondaryColor": palette["secondaryColor"],
+            "accentColor": palette["accentColor"],
+            "textColor": palette["textColor"],
+            "surfaceColor": palette["surfaceColor"],
+            "fontMood": palette["fontMood"],
         },
         "pages": pages,
     }

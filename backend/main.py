@@ -301,16 +301,16 @@ def render_site_html(site_json: dict[str, Any]) -> str:
             width: min(1120px, 92%);
             margin: 18px auto 0;
             padding: 14px 18px;
-            background: rgba(255,255,255,0.78);
+            background: {surface};
             backdrop-filter: blur(16px);
-            border: 1px solid rgba(0,0,0,0.08);
+            border: 1px solid rgba(0,0,0,0.12);
             border-radius: 22px;
             display: flex; justify-content: space-between; align-items: center; gap: 18px;
             box-shadow: 0 14px 45px rgba(0,0,0,.08);
         }}
         .brand {{ color: {text}; font-size: 21px; font-weight: 900; text-decoration: none; letter-spacing: -0.03em; }}
         nav {{ display: flex; gap: 8px; flex-wrap: wrap; }}
-        nav a {{ color: {text}; text-decoration: none; font-size: 14px; padding: 9px 12px; border-radius: 14px; background: rgba(0,0,0,.04); }}
+        nav a {{ color: {text}; text-decoration: none; font-size: 14px; padding: 9px 12px; border-radius: 14px; background: {secondary}; }}
         nav a:hover {{ background: {accent}; color: #fff; }}
         .page-wrapper {{ width: min(1120px, 90%); margin: 0 auto; padding: 52px 0; }}
         .hero-block {{ min-height: 540px; display: grid; grid-template-columns: 1.05fr .95fr; gap: 34px; align-items: center; }}
@@ -321,14 +321,14 @@ def render_site_html(site_json: dict[str, Any]) -> str:
         .button-row {{ display: flex; gap: 12px; flex-wrap: wrap; margin-top: 28px; }}
         .site-btn {{ display: inline-block; padding: 14px 20px; border-radius: 16px; background: {accent}; color: #fff; text-decoration: none; font-weight: 900; box-shadow: 0 12px 30px {accent}44; }}
         .site-btn-outline {{ background: transparent; border: 1px solid {accent}; color: {accent}; box-shadow: none; }}
-        .hero-panel {{ min-height: 380px; border-radius: 36px; background: linear-gradient(145deg, {surface}, rgba(255,255,255,.55)); border: 1px solid rgba(0,0,0,.08); padding: 36px; box-shadow: 0 26px 70px rgba(0,0,0,.12); }}
+        .hero-panel {{ min-height: 380px; border-radius: 36px; background: linear-gradient(145deg, {surface}, {secondary}); border: 1px solid rgba(0,0,0,.12); padding: 36px; box-shadow: 0 26px 70px rgba(0,0,0,.18); }}
         .panel-line {{ height: 18px; border-radius: 99px; background: {accent}; opacity: .28; margin-bottom: 16px; }}
         .panel-line.wide {{ width: 82%; }} .panel-line.short {{ width: 46%; }}
         .panel-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 52px; }}
-        .panel-grid span {{ height: 120px; border-radius: 26px; background: rgba(0,0,0,.055); border: 1px solid rgba(0,0,0,.06); }}
-        .content-section {{ margin: 30px 0; padding: clamp(28px, 5vw, 52px); background: rgba(255,255,255,.72); border: 1px solid rgba(0,0,0,.08); border-radius: 34px; box-shadow: 0 18px 50px rgba(0,0,0,.08); }}
+        .panel-grid span {{ height: 120px; border-radius: 26px; background: {primary}; border: 1px solid rgba(0,0,0,.12); }}
+        .content-section {{ margin: 30px 0; padding: clamp(28px, 5vw, 52px); background: {surface}; border: 1px solid rgba(0,0,0,.12); border-radius: 34px; box-shadow: 0 18px 50px rgba(0,0,0,.12); }}
         .features-grid, .contact-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }}
-        .feature-item, .contact-grid div {{ padding: 22px; background: rgba(255,255,255,.72); border: 1px solid rgba(0,0,0,.07); border-radius: 24px; }}
+        .feature-item, .contact-grid div {{ padding: 22px; background: {secondary}; border: 1px solid rgba(0,0,0,.12); border-radius: 24px; }}
         .feature-item strong, .contact-grid strong {{ display: block; font-size: 18px; margin-bottom: 10px; }}
         .page-heading {{ padding: 48px 0 12px; }}
         @media (max-width: 850px) {{
