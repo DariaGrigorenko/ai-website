@@ -58,72 +58,132 @@ def make_unique_slug(site_name: str) -> str:
 
 def css_color(site_json: dict[str, Any], key: str, fallback: str) -> str:
     design = site_json.get("design", {}) if isinstance(site_json.get("design"), dict) else {}
-    value = str(design.get(key, fallback))
+    value = str(design.get(key, fallback)).strip()
     if value.startswith("#") and len(value) == 7:
         return value
     return fallback
 
 
-def collect_valid_anchors(site_json: dict[str, Any]) -> list[str]:
-    anchors: list[str] = []
-    pages = site_json.get("pages") if isinstance(site_json.get("pages"), list) else []
-    for page_index, page in enumerate(pages):
-        if page_index == 0:
-            anchors.append("home")
+def is_multipage(site_json: dict[str, Any]) -> bool:
+    return "много" in str(site_json.get("siteType") or "").lower()
+
+
+def page_slug_value(page: dict[str, Any], index: int) -> str:
+    raw = str(page.get("slug") or "").strip()
+    if index == 0 or raw in {"", "/", "home", "/home"}:
+        return ""
+    raw = raw.strip("/")
+    return slugify(raw) or slugify(str(page.get("title") or f"page-{index}")) or f"page-{index}"
+
+
+def page_url(public_slug: str, page_slug: str = "", anchor: str = "") -> str:
+    base = f"/s/{public_slug}"
+    if page_slug:
+        base += f"/{page_slug}"
+    if anchor:
+        base += f"#{anchor.lstrip('#')}"
+    return base
+
+
+def pages_list(site_json: dict[str, Any]) -> list[dict[str, Any]]:
+    pages = site_json.get("pages")
+    return pages if isinstance(pages, list) else []
+
+
+def find_page(site_json: dict[str, Any], current_page_slug: str = "") -> tuple[dict[str, Any], int]:
+    pages = pages_list(site_json)
+    if not pages:
+        return {"title": "Сайт", "slug": "/", "sections": []}, 0
+
+    current = current_page_slug.strip("/")
+    for index, page in enumerate(pages):
+        if page_slug_value(page, index) == current:
+            return page, index
+    raise HTTPException(status_code=404, detail="Страница сайта не найдена")
+
+
+def collect_sections(site_json: dict[str, Any]) -> list[tuple[int, int, dict[str, Any], str]]:
+    result: list[tuple[int, int, dict[str, Any], str]] = []
+    for page_index, page in enumerate(pages_list(site_json)):
         for section_index, section in enumerate(page.get("sections", [])):
             if isinstance(section, dict):
-                anchor = str(section.get("anchorId") or "").strip().lstrip("#")
-                if anchor and anchor not in anchors:
-                    anchors.append(anchor)
-    if "contacts" not in anchors:
-        anchors.append("contacts")
-    return anchors
+                result.append((page_index, section_index, section, section_anchor(section, page_index, section_index)))
+    return result
 
 
-def normalize_button_target(raw_target: Any, site_json: dict[str, Any]) -> str:
+def find_target_for_anchor(site_json: dict[str, Any], anchor: str) -> tuple[str, str] | None:
+    anchor = anchor.strip().lstrip("#")
+    for page_index, _, _, sec_anchor in collect_sections(site_json):
+        if sec_anchor == anchor:
+            page = pages_list(site_json)[page_index]
+            return page_slug_value(page, page_index), anchor
+    return None
+
+
+def normalize_button_target(raw_target: Any, site_json: dict[str, Any], public_slug: str, current_page_slug: str) -> str:
     contact = site_json.get("contact", {}) if isinstance(site_json.get("contact"), dict) else {}
     phone = str(contact.get("phone") or "").strip()
     email = str(contact.get("email") or "").strip()
     value = str(raw_target or "").strip()
     low = value.lower()
-    valid_anchors = collect_valid_anchors(site_json)
-
-    if value.startswith("#"):
-        anchor = value[1:].strip()
-        if anchor in valid_anchors:
-            return f"#{anchor}"
-        if low in {"#contact", "#kontakt", "#контакты", "#zayavka", "#request"}:
-            return "#contacts"
-        return "#contacts"
+    multipage = is_multipage(site_json)
 
     if low.startswith(("tel:", "mailto:")):
         return value
 
     if "тел" in low or "звон" in low or "phone" in low or "call" in low:
-        return f"tel:{phone}" if phone else "#contacts"
+        return f"tel:{phone}" if phone else page_url(public_slug, current_page_slug, "contacts")
 
     if "mail" in low or "поч" in low or "email" in low:
-        return f"mailto:{email}" if email else "#contacts"
+        return f"mailto:{email}" if email else page_url(public_slug, current_page_slug, "contacts")
 
-    return "#contacts"
+    if value.startswith("/") and multipage:
+        page = value.strip("/")
+        return page_url(public_slug, "" if page in {"", "home"} else page)
+
+    if value.startswith("#"):
+        anchor = value[1:].strip()
+        target = find_target_for_anchor(site_json, anchor)
+        if target and multipage:
+            return page_url(public_slug, target[0], target[1])
+        if target:
+            return f"#{target[1]}"
+        return page_url(public_slug, current_page_slug, "contacts") if multipage else "#contacts"
+
+    return page_url(public_slug, current_page_slug, "contacts") if multipage else "#contacts"
 
 
-def render_buttons(buttons: list[dict[str, Any]], site_json: dict[str, Any]) -> str:
+def page_targets(site_json: dict[str, Any], public_slug: str, current_page_slug: str) -> list[str]:
+    if is_multipage(site_json):
+        urls: list[str] = []
+        for index, page in enumerate(pages_list(site_json)):
+            ps = page_slug_value(page, index)
+            if ps != current_page_slug:
+                urls.append(page_url(public_slug, ps))
+        urls.append(page_url(public_slug, current_page_slug, "contacts"))
+        return urls
+
+    anchors = []
+    for _, _, _, anchor in collect_sections(site_json):
+        if anchor != "home":
+            anchors.append(f"#{anchor}")
+    return anchors or ["#contacts"]
+
+
+def render_buttons(buttons: list[dict[str, Any]], site_json: dict[str, Any], public_slug: str, current_page_slug: str) -> str:
     html = ""
     if not buttons:
         buttons = [{"text": "Связаться", "target": "#contacts"}]
 
-    valid_anchors = collect_valid_anchors(site_json)
-    available_block_targets = [f"#{a}" for a in valid_anchors if a not in {"home"}]
+    fallback_targets = page_targets(site_json, public_slug, current_page_slug)
     used_targets: set[str] = set()
 
     for index, button in enumerate(buttons):
         text = escape(str(button.get("text") or f"Кнопка {index + 1}"))
-        target = normalize_button_target(button.get("target"), site_json)
+        target = normalize_button_target(button.get("target"), site_json, public_slug, current_page_slug)
 
-        # Если ИИ случайно сделал все кнопки на один блок, разводим их по разным разделам сайта.
-        if target in used_targets and available_block_targets:
-            for candidate in available_block_targets:
+        if target in used_targets and fallback_targets:
+            for candidate in fallback_targets:
                 if candidate not in used_targets:
                     target = candidate
                     break
@@ -137,22 +197,37 @@ def render_buttons(buttons: list[dict[str, Any]], site_json: dict[str, Any]) -> 
 def section_anchor(section: dict[str, Any], page_index: int, section_index: int) -> str:
     anchor = str(section.get("anchorId") or "").strip().lstrip("#")
     if anchor:
-        return anchor
+        return slugify(anchor) or anchor
     section_type = str(section.get("type") or "section")
     if section_type == "hero" and page_index == 0:
         return "home"
     if section_type == "contact":
-        return "contacts" if page_index == 0 else "contacts-page"
+        return "contacts"
     return f"section-{page_index}-{section_index}"
 
 
-def render_section(section: dict[str, Any], page_index: int, section_index: int, site_json: dict[str, Any]) -> str:
+def clean_text(value: Any, fallback: str = "") -> str:
+    text = str(value or fallback).strip()
+    banned = [
+        "индивидуальный подход",
+        "качественный сервис",
+        "широкий спектр услуг",
+        "лучшие решения",
+        "мы ценим каждого клиента",
+    ]
+    for phrase in banned:
+        if text.lower() == phrase:
+            return fallback or "Информация будет уточнена по запросу."
+    return text
+
+
+def render_section(section: dict[str, Any], page_index: int, section_index: int, site_json: dict[str, Any], public_slug: str, current_page_slug: str) -> str:
     section_type = section.get("type")
     anchor_id = escape(section_anchor(section, page_index, section_index))
 
     if section_type == "hero":
-        title = escape(str(section.get("title") or ""))
-        subtitle = escape(str(section.get("subtitle") or ""))
+        title = escape(clean_text(section.get("title"), str(site_json.get("siteName") or "")))
+        subtitle = escape(clean_text(section.get("subtitle"), "Краткое описание проекта и основного предложения."))
         buttons = section.get("buttons")
         if not isinstance(buttons, list):
             button_text = section.get("buttonText", "Подробнее")
@@ -163,30 +238,29 @@ def render_section(section: dict[str, Any], page_index: int, section_index: int,
                 <p class="hero-kicker">{escape(str(site_json.get('goal') or ''))}</p>
                 <h1>{title}</h1>
                 <p>{subtitle}</p>
-                <div class="button-row">{render_buttons(buttons, site_json)}</div>
+                <div class="button-row">{render_buttons(buttons, site_json, public_slug, current_page_slug)}</div>
             </div>
             <div class="hero-panel">
-                <div class="panel-line wide"></div>
-                <div class="panel-line"></div>
-                <div class="panel-line short"></div>
-                <div class="panel-grid"><span></span><span></span><span></span></div>
+                <div class="panel-card main-card"></div>
+                <div class="panel-card small-card"></div>
+                <div class="panel-card wide-card"></div>
             </div>
         </section>
         """
 
     if section_type == "features":
-        title = escape(str(section.get("title") or "Преимущества"))
+        title = escape(clean_text(section.get("title"), "Преимущества"))
         items = section.get("items")
         if not isinstance(items, list):
             items = []
         items_html = ""
-        for item in items:
+        for item in items[:6]:
             if isinstance(item, dict):
-                item_title = escape(str(item.get("title") or "Преимущество"))
-                item_description = escape(str(item.get("description") or ""))
+                item_title = escape(clean_text(item.get("title"), "Пункт"))
+                item_description = escape(clean_text(item.get("description"), "Описание пункта."))
                 items_html += f'<div class="feature-item"><strong>{item_title}</strong><p>{item_description}</p></div>'
             else:
-                items_html += f'<div class="feature-item"><strong>{escape(str(item))}</strong></div>'
+                items_html += f'<div class="feature-item"><strong>{escape(clean_text(item, "Пункт"))}</strong></div>'
         return f"""
         <section class="content-section" id="{anchor_id}">
             <h2>{title}</h2>
@@ -194,21 +268,11 @@ def render_section(section: dict[str, Any], page_index: int, section_index: int,
         </section>
         """
 
-    if section_type == "text":
-        title = escape(str(section.get("title") or "О проекте"))
-        description = escape(str(section.get("description") or ""))
-        return f"""
-        <section class="content-section card-section" id="{anchor_id}">
-            <h2>{title}</h2>
-            <p>{description}</p>
-        </section>
-        """
-
     if section_type == "contact":
-        title = escape(str(section.get("title") or "Контакты"))
-        phone = escape(str(section.get("phone") or ""))
-        email = escape(str(section.get("email") or ""))
-        address = escape(str(section.get("address") or ""))
+        title = escape(clean_text(section.get("title"), "Контакты"))
+        phone = escape(str(section.get("phone") or site_json.get("contact", {}).get("phone") or ""))
+        email = escape(str(section.get("email") or site_json.get("contact", {}).get("email") or ""))
+        address = escape(clean_text(section.get("address"), "Адрес будет добавлен позже"))
         return f"""
         <section class="content-section contact-section" id="{anchor_id}">
             <h2>{title}</h2>
@@ -220,8 +284,8 @@ def render_section(section: dict[str, Any], page_index: int, section_index: int,
         </section>
         """
 
-    title = escape(str(section.get("title") or "Блок"))
-    description = escape(str(section.get("description") or ""))
+    title = escape(clean_text(section.get("title"), "Раздел"))
+    description = escape(clean_text(section.get("description"), "Информация по разделу."))
     return f"""
     <section class="content-section card-section" id="{anchor_id}">
         <h2>{title}</h2>
@@ -240,46 +304,62 @@ def ensure_contact_section(site_json: dict[str, Any]) -> str:
         <div class="contact-grid">
             <div><strong>Телефон</strong><p>{phone}</p></div>
             <div><strong>Email</strong><p>{email}</p></div>
-            <div><strong>Заявка</strong><p>Оставьте сообщение удобным способом, и мы свяжемся с вами.</p></div>
+            <div><strong>Заявка</strong><p>Свяжитесь удобным способом, чтобы уточнить детали.</p></div>
         </div>
     </section>
     """
 
 
-def render_site_html(site_json: dict[str, Any]) -> str:
+def build_menu(site_json: dict[str, Any], public_slug: str, current_page_slug: str) -> str:
+    items = []
+    if is_multipage(site_json):
+        for index, page in enumerate(pages_list(site_json)):
+            ps = page_slug_value(page, index)
+            title = escape(str(page.get("title") or "Страница"))
+            active = " active" if ps == current_page_slug else ""
+            items.append(f'<a class="{active.strip()}" href="{page_url(public_slug, ps)}">{title}</a>')
+    else:
+        for _, _, section, anchor in collect_sections(site_json):
+            section_type = section.get("type")
+            if section_type == "hero":
+                title = "Главная"
+            else:
+                title = str(section.get("title") or anchor).strip()[:24]
+            if anchor not in {""}:
+                items.append(f'<a href="#{escape(anchor)}">{escape(title)}</a>')
+    return "".join(items)
+
+
+def render_site_html(site_json: dict[str, Any], public_slug: str, current_page_slug: str = "") -> str:
     site_name = escape(str(site_json.get("siteName") or "Сайт"))
-    pages = site_json.get("pages") if isinstance(site_json.get("pages"), list) else []
+    pages = pages_list(site_json)
 
-    primary = css_color(site_json, "primaryColor", "#f6efe7")
-    secondary = css_color(site_json, "secondaryColor", "#fffaf3")
-    accent = css_color(site_json, "accentColor", "#7c4a2d")
-    text = css_color(site_json, "textColor", "#201915")
-    surface = css_color(site_json, "surfaceColor", "#ffffff")
+    primary = css_color(site_json, "primaryColor", "#171321")
+    secondary = css_color(site_json, "secondaryColor", "#2c1d3a")
+    accent = css_color(site_json, "accentColor", "#f59e0b")
+    text = css_color(site_json, "textColor", "#fff7ed")
+    surface = css_color(site_json, "surfaceColor", "#241b2f")
 
-    menu_html = ""
-    content_html = ""
+    page, page_index = find_page(site_json, current_page_slug) if is_multipage(site_json) else (pages[0] if pages else {"sections": []}, 0)
+    sections = page.get("sections", []) if isinstance(page.get("sections"), list) else []
+    content_html = '<main class="page-wrapper">'
+
+    if is_multipage(site_json) and page_index > 0:
+        content_html += f'<section class="page-heading"><p class="hero-kicker">{escape(str(site_json.get("siteName") or ""))}</p><h1>{escape(str(page.get("title") or "Страница"))}</h1></section>'
+
     has_contacts = False
+    for section_index, section in enumerate(sections):
+        if isinstance(section, dict):
+            if section.get("type") == "contact":
+                has_contacts = True
+            content_html += render_section(section, page_index, section_index, site_json, public_slug, current_page_slug)
 
-    for page_index, page in enumerate(pages):
-        page_title = escape(str(page.get("title") or "Страница"))
-        anchor = "home" if page_index == 0 else slugify(page_title) or f"page-{page_index}"
-        menu_html += f'<a href="#{escape(anchor)}">{page_title}</a>'
+    if not has_contacts and (not is_multipage(site_json) or current_page_slug in {"", "contacts"}):
+        content_html += ensure_contact_section(site_json)
 
-        content_html += f'<main class="page-wrapper">'
-        if page_index > 0:
-            content_html += f'<section id="{escape(anchor)}" class="page-heading"><h1>{page_title}</h1></section>'
-        for section_index, section in enumerate(page.get("sections", [])):
-            if isinstance(section, dict):
-                if section.get("type") == "contact":
-                    has_contacts = True
-                content_html += render_section(section, page_index, section_index, site_json)
-        if page_index == 0 and not has_contacts:
-            content_html += ensure_contact_section(site_json)
-            has_contacts = True
-        content_html += '</main>'
-
-    if not content_html:
-        content_html = '<main class="page-wrapper"><section class="content-section"><h1>Сайт</h1><p>Контент не найден.</p></section></main>'
+    content_html += '</main>'
+    menu_html = build_menu(site_json, public_slug, current_page_slug)
+    home_href = page_url(public_slug, "") if is_multipage(site_json) else "#home"
 
     return f"""<!DOCTYPE html>
 <html lang="ru">
@@ -291,56 +371,56 @@ def render_site_html(site_json: dict[str, Any]) -> str:
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         html {{ scroll-behavior: smooth; }}
         body {{
-            font-family: Inter, Arial, sans-serif;
-            background: radial-gradient(circle at top left, {secondary} 0%, {primary} 42%, {surface} 100%);
+            font-family: Manrope, Inter, Arial, sans-serif;
+            background: linear-gradient(135deg, {primary} 0%, {secondary} 58%, {surface} 100%);
             color: {text};
             min-height: 100vh;
         }}
         .site-header {{
             position: sticky; top: 0; z-index: 20;
-            width: min(1120px, 92%);
+            width: min(1160px, 92%);
             margin: 18px auto 0;
-            padding: 14px 18px;
-            background: {surface};
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(0,0,0,0.12);
-            border-radius: 22px;
+            padding: 16px 18px;
+            background: color-mix(in srgb, {surface} 88%, transparent);
+            backdrop-filter: blur(18px);
+            border: 1px solid rgba(255,255,255,0.16);
+            border-radius: 28px;
             display: flex; justify-content: space-between; align-items: center; gap: 18px;
-            box-shadow: 0 14px 45px rgba(0,0,0,.08);
+            box-shadow: 0 20px 60px rgba(0,0,0,.18);
         }}
-        .brand {{ color: {text}; font-size: 21px; font-weight: 900; text-decoration: none; letter-spacing: -0.03em; }}
+        .brand {{ color: {text}; font-size: 22px; font-weight: 950; text-decoration: none; letter-spacing: -0.04em; }}
         nav {{ display: flex; gap: 8px; flex-wrap: wrap; }}
-        nav a {{ color: {text}; text-decoration: none; font-size: 14px; padding: 9px 12px; border-radius: 14px; background: {secondary}; }}
-        nav a:hover {{ background: {accent}; color: #fff; }}
-        .page-wrapper {{ width: min(1120px, 90%); margin: 0 auto; padding: 52px 0; }}
-        .hero-block {{ min-height: 540px; display: grid; grid-template-columns: 1.05fr .95fr; gap: 34px; align-items: center; }}
-        .hero-kicker {{ color: {accent}; font-size: 14px; font-weight: 900; text-transform: uppercase; letter-spacing: .12em; margin-bottom: 16px; }}
-        h1 {{ font-size: clamp(42px, 7vw, 82px); line-height: .96; margin-bottom: 22px; letter-spacing: -0.06em; font-weight: 950; }}
-        h2 {{ font-size: clamp(30px, 4.8vw, 52px); line-height: 1; margin-bottom: 22px; letter-spacing: -0.04em; }}
-        p {{ font-size: 18px; line-height: 1.72; opacity: .82; }}
+        nav a {{ color: {text}; text-decoration: none; font-size: 14px; padding: 10px 13px; border-radius: 999px; background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.10); }}
+        nav a:hover, nav a.active {{ background: {accent}; color: #fff; }}
+        .page-wrapper {{ width: min(1160px, 90%); margin: 0 auto; padding: 54px 0; }}
+        .hero-block {{ min-height: 540px; display: grid; grid-template-columns: 1.1fr .9fr; gap: 34px; align-items: center; }}
+        .hero-kicker {{ color: {accent}; font-size: 13px; font-weight: 950; text-transform: uppercase; letter-spacing: .13em; margin-bottom: 16px; }}
+        h1 {{ font-size: clamp(40px, 7vw, 86px); line-height: .95; margin-bottom: 22px; letter-spacing: -0.07em; font-weight: 950; }}
+        h2 {{ font-size: clamp(28px, 4.6vw, 54px); line-height: 1; margin-bottom: 22px; letter-spacing: -0.05em; }}
+        p {{ font-size: 18px; line-height: 1.75; opacity: .86; }}
         .button-row {{ display: flex; gap: 12px; flex-wrap: wrap; margin-top: 28px; }}
-        .site-btn {{ display: inline-block; padding: 14px 20px; border-radius: 16px; background: {accent}; color: #fff; text-decoration: none; font-weight: 900; box-shadow: 0 12px 30px {accent}44; }}
-        .site-btn-outline {{ background: transparent; border: 1px solid {accent}; color: {accent}; box-shadow: none; }}
-        .hero-panel {{ min-height: 380px; border-radius: 36px; background: linear-gradient(145deg, {surface}, {secondary}); border: 1px solid rgba(0,0,0,.12); padding: 36px; box-shadow: 0 26px 70px rgba(0,0,0,.18); }}
-        .panel-line {{ height: 18px; border-radius: 99px; background: {accent}; opacity: .28; margin-bottom: 16px; }}
-        .panel-line.wide {{ width: 82%; }} .panel-line.short {{ width: 46%; }}
-        .panel-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 52px; }}
-        .panel-grid span {{ height: 120px; border-radius: 26px; background: {primary}; border: 1px solid rgba(0,0,0,.12); }}
-        .content-section {{ margin: 30px 0; padding: clamp(28px, 5vw, 52px); background: {surface}; border: 1px solid rgba(0,0,0,.12); border-radius: 34px; box-shadow: 0 18px 50px rgba(0,0,0,.12); }}
+        .site-btn {{ display: inline-block; padding: 15px 21px; border-radius: 999px; background: {accent}; color: #fff; text-decoration: none; font-weight: 950; box-shadow: 0 14px 34px rgba(0,0,0,.18); }}
+        .site-btn-outline {{ background: rgba(255,255,255,.08); border: 1px solid {accent}; color: {text}; box-shadow: none; }}
+        .hero-panel {{ min-height: 370px; border-radius: 42px; background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.18); padding: 28px; position: relative; overflow: hidden; }}
+        .panel-card {{ position: absolute; border-radius: 32px; background: {accent}; opacity: .26; }}
+        .main-card {{ width: 72%; height: 54%; top: 34px; left: 28px; }}
+        .small-card {{ width: 34%; height: 28%; right: 26px; top: 66px; opacity: .46; }}
+        .wide-card {{ width: 76%; height: 24%; left: 54px; bottom: 38px; opacity: .18; }}
+        .content-section {{ margin: 30px 0; padding: clamp(28px, 5vw, 54px); background: color-mix(in srgb, {surface} 88%, white 12%); border: 1px solid rgba(255,255,255,.14); border-radius: 38px; box-shadow: 0 22px 58px rgba(0,0,0,.16); }}
         .features-grid, .contact-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }}
-        .feature-item, .contact-grid div {{ padding: 22px; background: {secondary}; border: 1px solid rgba(0,0,0,.12); border-radius: 24px; }}
-        .feature-item strong, .contact-grid strong {{ display: block; font-size: 18px; margin-bottom: 10px; }}
-        .page-heading {{ padding: 48px 0 12px; }}
+        .feature-item, .contact-grid div {{ padding: 24px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); border-radius: 26px; }}
+        .feature-item strong, .contact-grid strong {{ display: block; font-size: 19px; margin-bottom: 10px; }}
+        .page-heading {{ padding: 42px 0 8px; }}
         @media (max-width: 850px) {{
             .site-header {{ flex-direction: column; align-items: flex-start; }}
             .hero-block, .features-grid, .contact-grid {{ grid-template-columns: 1fr; }}
-            .hero-panel {{ min-height: 240px; }}
+            .hero-panel {{ min-height: 220px; }}
         }}
     </style>
 </head>
 <body>
     <header class="site-header">
-        <a class="brand" href="#home">{site_name}</a>
+        <a class="brand" href="{escape(home_href)}">{site_name}</a>
         <nav>{menu_html}</nav>
     </header>
     {content_html}
@@ -429,6 +509,20 @@ def get_public_site_json(slug: str):
     }
 
 
+@app.get("/s/{slug}/{page_slug}", response_class=HTMLResponse)
+def open_public_site_page(slug: str, page_slug: str):
+    project = find_project_by_slug(slug)
+    if not project:
+        raise HTTPException(status_code=404, detail="Сайт не найден")
+
+    expires_at = datetime.fromisoformat(project["expiresAt"])
+    if datetime.now() > expires_at:
+        return HTMLResponse(content="<h1>Срок действия временной ссылки истёк</h1>", status_code=410)
+
+    html = render_site_html(project["siteJson"], public_slug=slug, current_page_slug=page_slug)
+    return HTMLResponse(content=html)
+
+
 @app.get("/s/{slug}", response_class=HTMLResponse)
 def open_public_site(slug: str):
     project = find_project_by_slug(slug)
@@ -439,5 +533,5 @@ def open_public_site(slug: str):
     if datetime.now() > expires_at:
         return HTMLResponse(content="<h1>Срок действия временной ссылки истёк</h1>", status_code=410)
 
-    html = render_site_html(project["siteJson"])
+    html = render_site_html(project["siteJson"], public_slug=slug, current_page_slug="")
     return HTMLResponse(content=html)
