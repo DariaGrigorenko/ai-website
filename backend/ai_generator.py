@@ -138,10 +138,8 @@ def generate_site_with_gemini(
 Предыдущий вариант сайта, который пользователю не понравился:
 {json.dumps(previous_site_json, ensure_ascii=False)[:12000]}
 
-Комментарий пользователя к перегенерации. Это обязательное требование, его нужно выполнить в первую очередь:
-{regeneration_note or "Сделай другой вариант: измени структуру, стиль, тексты, цвета и расположение блоков."}
-
-Важно: при перегенерации нельзя просто повторять предыдущий сайт. Нужно заметно изменить цветовую палитру, композицию, акценты, тексты и порядок смысловых блоков с учётом комментария пользователя.
+Комментарий к перегенерации:
+{regeneration_note or "Сделай другой вариант: измени структуру, стиль, тексты и расположение блоков."}
 """
 
     prompt = f"""
@@ -150,20 +148,13 @@ def generate_site_with_gemini(
 Основные требования:
 - поддерживаются только два типа сайта: "Лендинг" и "Многостраничный сайт";
 - лендинг — одна страница;
-- многостраничный сайт — от 2 до 5 отдельных страниц с разными slug; это не лендинг с якорями;
+- многостраничный сайт — от 2 до 5 страниц;
 - ИИ сам выбирает стиль, фон, цветовую схему, расположение блоков, названия блоков, тексты и кнопки;
-- для многостраничного сайта каждая страница должна иметь самостоятельный смысл и отдельный slug: /, /about, /services, /portfolio, /schedule, /contacts и т.п.;
-- НЕ делай многостраничный сайт одной длинной страницей с якорями;
-- цветовая схема должна строго учитывать пожелания пользователя: если пользователь просит тёмный сайт — используй тёмные HEX-цвета; если просит яркий — используй контрастные цвета; если просит спокойный — используй мягкую палитру;
-- не делай все сайты белыми или серыми по умолчанию; фон, карточки и акценты должны отличаться по цвету;
-- текст должен быть хорошо читаемым на выбранном фоне;
 - НЕ добавляй изображения и НЕ добавляй поля image/imageCategory/imageUrl;
 - готовый сайт НЕ должен визуально копировать интерфейс HGGps;
 - дизайн должен соответствовать бизнесу пользователя;
 - если пользователь не указал телефон или email, используй переданные резервные значения;
-- нельзя делать интернет-магазин, корзину, оплату, личный кабинет и сложный drag-and-drop;
-- запрещены общие шаблонные фразы без смысла: "индивидуальный подход", "качественный сервис", "широкий спектр услуг", "лучшие решения", "мы ценим каждого клиента", если они не раскрыты конкретикой;
-- каждый текст должен быть привязан к описанию пользователя, тематике, цели сайта и конкретной информации, которую пользователь указал.
+- нельзя делать интернет-магазин, корзину, оплату, личный кабинет и сложный drag-and-drop.
 
 Данные пользователя:
 Описание проекта:
@@ -215,11 +206,11 @@ Email для контактов:
     "styleName": "Название выбранного ИИ стиля",
     "background": "Краткое описание фона",
     "layoutReason": "Почему ИИ выбрал такое расположение блоков",
-    "primaryColor": "#HEX основной фон, не всегда белый",
-    "secondaryColor": "#HEX дополнительный фон",
-    "accentColor": "#HEX акцентный цвет кнопок",
-    "textColor": "#HEX цвет текста с хорошим контрастом",
-    "surfaceColor": "#HEX цвет карточек, отличается от основного фона",
+    "primaryColor": "#HEX",
+    "secondaryColor": "#HEX",
+    "accentColor": "#HEX",
+    "textColor": "#HEX",
+    "surfaceColor": "#HEX",
     "fontMood": "Описание настроения шрифта"
   }},
   "siteMap": [
@@ -273,25 +264,25 @@ Email для контактов:
 4. Если названия нет, придумай короткое естественное название сам.
 5. Не начинай siteName со слов "Описание проекта", "Сайт для", "Проект".
 6. Для лендинга создай ровно 1 страницу со slug "/".
-7. Для многостраничного сайта создай от 2 до 5 отдельных страниц. У каждой страницы должен быть свой slug: /, /about, /services, /portfolio, /team, /faq, /contacts, /menu, /catalog, /schedule. Не заменяй страницы якорями одной страницы.
-8. siteMap должен совпадать с pages.
-9. У каждого важного блока должен быть anchorId. Используй понятные значения: home, features, services, about, portfolio, schedule, team, faq, catalog, contacts.
-10. Количество кнопок в hero на главной странице должно быть равно {button_count}.
-11. Кнопки НЕ должны все вести в один и тот же блок. Для лендинга распределяй их по разным блокам: #features, #services, #about, #portfolio, #schedule, #contacts. Для многостраничного сайта часть кнопок может вести на страницы: /services, /about, /portfolio, /schedule, /contacts.
-12. Если кнопка явно про звонок — можно использовать tel:{contact_phone}. Если явно про почту — mailto:{contact_email}. В остальных случаях лучше вести к блокам сайта через #anchorId.
-13. Не используй пустые ссылки, "#", "javascript:void(0)" и несуществующие якоря. Для многостраничного сайта target должен вести на существующую страницу или существующий блок на странице.
-14. Тексты кнопок и целевые блоки должны соответствовать главной цели сайта.
-15. Главный экран, порядок блоков и siteMap должны быть разными для разных целей сайта.
-16. В каждом сайте обязательно должен быть контактный блок с anchorId="contacts", phone="{contact_phone}" и email="{contact_email}".
-17. ИИ сам выбирает визуальный стиль и layout по описанию пользователя.
-18. Структура блоков должна отличаться при перегенерации, если есть предыдущий вариант.
-19. При перегенерации обязательно учитывай комментарий пользователя и меняй именно то, что он попросил изменить.
-20. Цвета в design должны быть реальными HEX-цветами и соответствовать описанию оформления. Не ставь белый фон, если пользователь просит другой стиль.
-21. Если пользователь просит тёмный, дорогой, неоновый, яркий, природный, кофейный, спортивный, детский или другой стиль — цветовая палитра должна явно это отражать.
-22. JSON должен быть корректным.
-23. Не выводи на сайте технические фразы: Gemini, provider, model, сгенерировано ИИ, стиль ИИ, объяснение логики блоков.
-24. Не генерируй изображения и не добавляй image-поля.
-25. Пиши конкретно. Не используй водянистые универсальные абзацы, которые подходят к любому бизнесу. В каждом блоке должны быть детали из запроса пользователя.
+7. Для многостраничного сайта создай от 2 до 5 НАСТОЯЩИХ страниц. Разрешённые страницы: Главная, О нас, Услуги, Портфолио, Команда, FAQ, Контакты, Меню, Каталог, Расписание.
+8. Для многостраничного сайта у каждой страницы, кроме главной, должен быть отдельный slug: "/services", "/about", "/portfolio", "/contacts" и т.п. Не делай многостраничный сайт одной страницей с якорями.
+9. siteMap должен совпадать с pages.
+10. У каждого важного блока может быть anchorId, но для многостраничного сайта навигация и кнопки должны вести на отдельные страницы, а не только на #якоря.
+11. Количество кнопок в hero на главной странице должно быть равно {button_count}.
+12. Для лендинга кнопки могут вести на разные блоки: #features, #services, #about, #portfolio, #schedule, #contacts.
+13. Для многостраничного сайта кнопки должны вести на разные страницы: /services, /about, /portfolio, /schedule, /contacts. Не делай все кнопки на одну страницу.
+14. Если кнопка явно про звонок — можно использовать tel:{contact_phone}. Если явно про почту — mailto:{contact_email}.
+15. Не используй пустые ссылки, "#", "javascript:void(0)" и несуществующие цели.
+16. Тексты кнопок и целевые страницы должны соответствовать главной цели сайта.
+17. Главный экран, порядок страниц, тексты и siteMap должны быть разными для разных целей сайта.
+18. В каждом сайте обязательно должен быть контактный раздел или отдельная страница контактов с phone="{contact_phone}" и email="{contact_email}".
+19. ИИ сам выбирает визуальный стиль и layout по описанию пользователя.
+20. Структура страниц и тексты должны отличаться при перегенерации, если есть предыдущий вариант. Обязательно учитывай комментарий пользователя к перегенерации.
+21. JSON должен быть корректным.
+22. Не выводи на сайте технические фразы: Gemini, provider, model, сгенерировано ИИ, стиль ИИ, объяснение логики блоков.
+23. Не генерируй изображения и не добавляй image-поля.
+24. Не используй общие пустые фразы: "индивидуальный подход", "высокое качество", "профессиональная команда", "широкий спектр услуг", "лучшие решения", если рядом нет конкретного объяснения. Пиши конкретно по бизнесу пользователя: что именно предлагается, для кого, какой результат получает посетитель.
+25. Каждый блок должен отвечать на конкретный вопрос посетителя: что это, зачем это нужно, как воспользоваться, почему стоит обратиться, как связаться.
 """
 
     response = client.models.generate_content(
@@ -416,7 +407,7 @@ def normalize_generated_site(site_json: dict[str, Any], site_type: str, email: s
             buttons = [{"text": old_text, "target": "#contacts"}]
         while len(buttons) < button_count:
             buttons.append({"text": default_button_text(len(buttons), site_json.get("goal", "")), "target": ""})
-        hero["buttons"] = normalize_buttons(buttons[:button_count], pages, phone, email, site_json.get("goal", ""))
+        hero["buttons"] = normalize_buttons(buttons[:button_count], pages, phone, email, site_json.get("goal", ""), site_json["siteType"] == "Многостраничный сайт")
 
     site_json["pages"] = pages
     site_json["siteMap"] = [
@@ -428,24 +419,16 @@ def normalize_generated_site(site_json: dict[str, Any], site_type: str, email: s
     design = site_json.get("design")
     if not isinstance(design, dict):
         design = {}
-
-    palette = choose_fallback_palette(
-        description=description,
-        design_preferences=str(design.get("background") or "") + " " + str(design.get("styleName") or ""),
-        goal=str(site_json.get("goal") or ""),
-        site_name=str(site_json.get("siteName") or ""),
-    )
-
-    design.setdefault("styleName", palette["styleName"])
-    design.setdefault("background", palette["background"])
+    design.setdefault("styleName", "Индивидуальный стиль")
+    design.setdefault("background", "Фон подобран по тематике проекта")
     design.setdefault("layoutReason", "Блоки расположены по смыслу запроса пользователя.")
-    design.setdefault("primaryColor", palette["primaryColor"])
-    design.setdefault("secondaryColor", palette["secondaryColor"])
-    design.setdefault("accentColor", palette["accentColor"])
-    design.setdefault("textColor", palette["textColor"])
-    design.setdefault("surfaceColor", palette["surfaceColor"])
-    design.setdefault("fontMood", palette["fontMood"])
-    site_json["design"] = sanitize_design(design, palette)
+    design.setdefault("primaryColor", "#f6efe7")
+    design.setdefault("secondaryColor", "#fffaf3")
+    design.setdefault("accentColor", "#7c4a2d")
+    design.setdefault("textColor", "#201915")
+    design.setdefault("surfaceColor", "#ffffff")
+    design.setdefault("fontMood", "Чистый современный стиль")
+    site_json["design"] = sanitize_design(design)
     return site_json
 
 
@@ -529,7 +512,54 @@ def choose_anchor_for_button(text: str, target: str, anchors: list[str], used: s
     return anchors[index % len(anchors)] if anchors else "contacts"
 
 
-def normalize_buttons(buttons: list[Any], pages: list[dict[str, Any]], phone: str, email: str, goal: str) -> list[dict[str, str]]:
+
+def available_pages(pages: list[dict[str, Any]]) -> list[tuple[str, str]]:
+    result: list[tuple[str, str]] = []
+    for index, page in enumerate(pages):
+        if not isinstance(page, dict):
+            continue
+        raw_slug = str(page.get("slug") or "").strip().strip("/")
+        if index == 0 or raw_slug in {"", "home"}:
+            continue
+        slug = slug_text(raw_slug) if raw_slug.startswith("/") else slug_text(raw_slug)
+        if not slug:
+            slug = slug_text(str(page.get("title") or f"page-{index}"))
+        title = str(page.get("title") or slug)
+        if slug and (slug, title) not in result:
+            result.append((slug, title))
+    return result
+
+
+def choose_page_for_button(text: str, target: str, pages: list[dict[str, Any]], used: set[str], index: int) -> str:
+    low = f"{text} {target}".lower()
+    available = available_pages(pages)
+    slugs = [slug for slug, _ in available]
+    cleaned_target = slug_text(target.strip().lstrip("#/"))
+    if cleaned_target in slugs and cleaned_target not in used:
+        return cleaned_target
+
+    rules = [
+        (["услуг", "сервис", "стоим", "цена", "выбрать"], ["service", "services", "uslugi", "услуги", "каталог", "catalog", "menu"]),
+        (["работ", "портф", "кейс", "пример"], ["portfolio", "портфолио", "работ", "case"]),
+        (["распис", "дат", "время", "программ"], ["schedule", "расписание", "программа", "event"]),
+        (["команд", "тренер", "специалист"], ["team", "команда", "тренер", "специалист"]),
+        (["о нас", "компан", "подроб", "узнать"], ["about", "о-нас", "onas", "company", "компания"]),
+        (["контакт", "связ", "заяв", "запис", "консульт"], ["contacts", "kontakty", "контакты", "contact"]),
+        (["faq", "вопрос"], ["faq", "вопрос"]),
+    ]
+    for button_words, page_words in rules:
+        if any(word in low for word in button_words):
+            for slug, title in available:
+                joined = f"{slug} {title}".lower()
+                if slug not in used and any(word in joined for word in page_words):
+                    return slug
+
+    for slug, _ in available:
+        if slug not in used:
+            return slug
+    return available[index % len(available)][0] if available else "contacts"
+
+def normalize_buttons(buttons: list[Any], pages: list[dict[str, Any]], phone: str, email: str, goal: str, multipage: bool = False) -> list[dict[str, str]]:
     anchors = available_anchors(pages)
     used: set[str] = set()
     normalized: list[dict[str, str]] = []
@@ -541,11 +571,15 @@ def normalize_buttons(buttons: list[Any], pages: list[dict[str, Any]], phone: st
             text = str(button or default_button_text(index, goal)).strip()
             target_raw = ""
 
-        lower = text.lower()
+        lower = f"{text} {target_raw}".lower()
         if any(word in lower for word in ["позвон", "звон", "телефон"]):
             target = "tel:" + re.sub(r"[^0-9+]", "", phone)
         elif any(word in lower for word in ["почт", "email", "mail"]):
             target = "mailto:" + email
+        elif multipage:
+            page = choose_page_for_button(text, target_raw, pages, used, index)
+            used.add(page)
+            target = "/" + page if page else "/"
         else:
             anchor = choose_anchor_for_button(text, target_raw, anchors, used, index)
             used.add(anchor)
@@ -553,7 +587,6 @@ def normalize_buttons(buttons: list[Any], pages: list[dict[str, Any]], phone: st
 
         normalized.append({"text": text[:44] or default_button_text(index, goal), "target": target})
     return normalized
-
 
 def default_button_text(index: int, goal: str) -> str:
     goal_lower = (goal or "").lower()
@@ -571,175 +604,23 @@ def default_button_text(index: int, goal: str) -> str:
     return variants[index % len(variants)]
 
 
-def choose_fallback_palette(description: str = "", design_preferences: str = "", goal: str = "", site_name: str = "") -> dict[str, str]:
-    text = f"{description} {design_preferences} {goal} {site_name}".lower()
-
-    palettes = {
-        "dark": {
-            "styleName": "Тёмный контрастный стиль",
-            "background": "Тёмный фон с яркими акцентами",
-            "primaryColor": "#10111f",
-            "secondaryColor": "#1f1b35",
-            "accentColor": "#a855f7",
-            "textColor": "#f8fafc",
-            "surfaceColor": "#191827",
-            "fontMood": "Современный контрастный шрифт",
-        },
-        "coffee": {
-            "styleName": "Тёплый кофейный стиль",
-            "background": "Тёплый фон в кофейных и кремовых оттенках",
-            "primaryColor": "#2b1a12",
-            "secondaryColor": "#ead7bd",
-            "accentColor": "#b86b35",
-            "textColor": "#fff7ed",
-            "surfaceColor": "#4a2d1f",
-            "fontMood": "Мягкий уютный шрифт",
-        },
-        "beauty": {
-            "styleName": "Мягкий beauty-стиль",
-            "background": "Нежный фон с розовыми и светлыми акцентами",
-            "primaryColor": "#fff1f6",
-            "secondaryColor": "#f8d7e7",
-            "accentColor": "#c026d3",
-            "textColor": "#301323",
-            "surfaceColor": "#ffffff",
-            "fontMood": "Элегантный мягкий шрифт",
-        },
-        "nature": {
-            "styleName": "Природный спокойный стиль",
-            "background": "Натуральный фон в зелёных и светлых оттенках",
-            "primaryColor": "#10251e",
-            "secondaryColor": "#dbe8d5",
-            "accentColor": "#3f7d58",
-            "textColor": "#f7fff8",
-            "surfaceColor": "#1e3a2e",
-            "fontMood": "Спокойный чистый шрифт",
-        },
-        "sport": {
-            "styleName": "Энергичный спортивный стиль",
-            "background": "Контрастный фон с динамичными акцентами",
-            "primaryColor": "#111827",
-            "secondaryColor": "#1f2937",
-            "accentColor": "#f97316",
-            "textColor": "#f9fafb",
-            "surfaceColor": "#182033",
-            "fontMood": "Сильный уверенный шрифт",
-        },
-        "tech": {
-            "styleName": "Технологичный стиль",
-            "background": "Глубокий технологичный фон с холодными акцентами",
-            "primaryColor": "#07111f",
-            "secondaryColor": "#0f2a3f",
-            "accentColor": "#22d3ee",
-            "textColor": "#e0f2fe",
-            "surfaceColor": "#0b1b2b",
-            "fontMood": "Чёткий технологичный шрифт",
-        },
-        "bright": {
-            "styleName": "Яркий современный стиль",
-            "background": "Яркий фон с насыщенными акцентами",
-            "primaryColor": "#fff7ed",
-            "secondaryColor": "#fee2e2",
-            "accentColor": "#ef4444",
-            "textColor": "#2b1111",
-            "surfaceColor": "#ffffff",
-            "fontMood": "Дружелюбный современный шрифт",
-        },
-        "default": {
-            "styleName": "Индивидуальный современный стиль",
-            "background": "Фон подобран по тематике проекта",
-            "primaryColor": "#171321",
-            "secondaryColor": "#2c1d3a",
-            "accentColor": "#f59e0b",
-            "textColor": "#fff7ed",
-            "surfaceColor": "#241b2f",
-            "fontMood": "Современный выразительный шрифт",
-        },
-    }
-
-    if any(word in text for word in ["тём", "темн", "черн", "black", "dark", "неон", "премиум"]):
-        return palettes["dark"]
-    if any(word in text for word in ["коф", "кафе", "шаур", "еда", "ресторан", "бар", "пекар"]):
-        return palettes["coffee"]
-    if any(word in text for word in ["салон", "крас", "beauty", "макияж", "ногт", "бров"]):
-        return palettes["beauty"]
-    if any(word in text for word in ["йог", "эко", "природ", "зел", "цвет", "сад"]):
-        return palettes["nature"]
-    if any(word in text for word in ["спорт", "фитнес", "зал", "трен", "бокс"]):
-        return palettes["sport"]
-    if any(word in text for word in ["it", "айти", "тех", "софт", "прилож", "стартап", "цифр"]):
-        return palettes["tech"]
-    if any(word in text for word in ["ярк", "дет", "празд", "фестив", "ивент"]):
-        return palettes["bright"]
-    return palettes["default"]
-
-
-def sanitize_design(design: dict[str, Any], fallback_palette: dict[str, str] | None = None) -> dict[str, str]:
-    fallback_palette = fallback_palette or choose_fallback_palette()
-
+def sanitize_design(design: dict[str, Any]) -> dict[str, str]:
     def color(value: Any, fallback: str) -> str:
         value = str(value or "").strip()
         return value if re.fullmatch(r"#[0-9a-fA-F]{6}", value) else fallback
 
-    result = {
-        "styleName": str(design.get("styleName") or fallback_palette["styleName"])[:80],
-        "background": str(design.get("background") or fallback_palette["background"])[:220],
+    return {
+        "styleName": str(design.get("styleName") or "Индивидуальный стиль")[:80],
+        "background": str(design.get("background") or "Фон подобран по проекту")[:220],
         "layoutReason": str(design.get("layoutReason") or "Структура выбрана по описанию пользователя")[:300],
-        "primaryColor": color(design.get("primaryColor"), fallback_palette["primaryColor"]),
-        "secondaryColor": color(design.get("secondaryColor"), fallback_palette["secondaryColor"]),
-        "accentColor": color(design.get("accentColor"), fallback_palette["accentColor"]),
-        "textColor": color(design.get("textColor"), fallback_palette["textColor"]),
-        "surfaceColor": color(design.get("surfaceColor"), fallback_palette["surfaceColor"]),
-        "fontMood": str(design.get("fontMood") or fallback_palette["fontMood"])[:120],
+        "primaryColor": color(design.get("primaryColor"), "#f6efe7"),
+        "secondaryColor": color(design.get("secondaryColor"), "#fffaf3"),
+        "accentColor": color(design.get("accentColor"), "#7c4a2d"),
+        "textColor": color(design.get("textColor"), "#201915"),
+        "surfaceColor": color(design.get("surfaceColor"), "#ffffff"),
+        "fontMood": str(design.get("fontMood") or "Чистый современный стиль")[:120],
     }
 
-    # Если Gemini вернул почти белую палитру по умолчанию, заменяем её на осмысленную.
-    if is_too_white_palette(result):
-        result.update({
-            "primaryColor": fallback_palette["primaryColor"],
-            "secondaryColor": fallback_palette["secondaryColor"],
-            "accentColor": fallback_palette["accentColor"],
-            "textColor": fallback_palette["textColor"],
-            "surfaceColor": fallback_palette["surfaceColor"],
-        })
-
-    result["textColor"] = ensure_readable_text(result["textColor"], result["primaryColor"], result["surfaceColor"])
-    return result
-
-
-def hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
-    hex_color = hex_color.strip().lstrip("#")
-    return int(hex_color[0:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16)
-
-
-def luminance(hex_color: str) -> float:
-    try:
-        r, g, b = hex_to_rgb(hex_color)
-    except Exception:
-        return 1.0
-    vals = []
-    for c in (r, g, b):
-        v = c / 255
-        vals.append(v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4)
-    return 0.2126 * vals[0] + 0.7152 * vals[1] + 0.0722 * vals[2]
-
-
-def contrast_ratio(c1: str, c2: str) -> float:
-    l1, l2 = luminance(c1), luminance(c2)
-    lighter, darker = max(l1, l2), min(l1, l2)
-    return (lighter + 0.05) / (darker + 0.05)
-
-
-def is_too_white_palette(design: dict[str, str]) -> bool:
-    colors = [design.get("primaryColor", "#ffffff"), design.get("secondaryColor", "#ffffff"), design.get("surfaceColor", "#ffffff")]
-    return sum(1 for c in colors if luminance(c) > 0.86) >= 2
-
-
-def ensure_readable_text(text_color: str, primary: str, surface: str) -> str:
-    if contrast_ratio(text_color, primary) >= 3.2 or contrast_ratio(text_color, surface) >= 3.2:
-        return text_color
-    avg = (luminance(primary) + luminance(surface)) / 2
-    return "#111827" if avg > 0.55 else "#f9fafb"
 
 def resolve_site_name(company_name: str | None, description: str, ai_name: Any) -> str:
     company_name = (company_name or "").strip()
@@ -804,9 +685,9 @@ def generate_mock_site(description: str, site_type: str, goal: str, company_name
         "sections": [
             {"type": "hero", "anchorId": "home", "title": title, "subtitle": description[:280], "buttons": []},
             {"type": "features", "anchorId": "features", "title": features_title, "items": [
-                {"title": "Понятная структура", "description": "Посетитель быстро понимает предложение."},
-                {"title": "Удобные переходы", "description": "Кнопки ведут в разные важные блоки сайта."},
-                {"title": "Контакт в один шаг", "description": "Данные для связи находятся в отдельном блоке."},
+                {"title": "Информация по запросу", "description": "На сайте выделены именно те разделы, которые пользователь указал в описании."},
+                {"title": "Переходы по смыслу", "description": "Кнопки ведут к услугам, деталям проекта или контактам, а не в один общий блок."},
+                {"title": "Контакт без регистрации", "description": "Телефон и email размещаются в понятном контактном разделе."},
             ]},
             {"type": "text", "anchorId": "services", "title": text_title, "description": desired_info or "ИИ подобрал базовые блоки по описанию проекта."},
             {"type": "contact", "anchorId": "contacts", "title": "Контакты", "phone": contact_phone, "email": contact_email, "address": "Адрес будет добавлен позже"},
@@ -817,21 +698,20 @@ def generate_mock_site(description: str, site_type: str, goal: str, company_name
         pages.append({"title": "Услуги", "slug": "/uslugi", "type": "services", "sections": [{"type": "text", "anchorId": "services-page", "title": "Услуги", "description": desired_info or "Описание услуг будет дополнено."}]})
         pages.append({"title": "Контакты", "slug": "/kontakty", "type": "contacts", "sections": [{"type": "contact", "anchorId": "contacts", "title": "Контакты", "phone": contact_phone, "email": contact_email, "address": "Адрес будет добавлен позже"}]})
 
-    palette = choose_fallback_palette(description, design_preferences, goal, title)
     site_json = {
         "siteName": title,
         "siteType": "Многостраничный сайт" if is_multi else "Лендинг",
         "goal": goal,
         "design": {
-            "styleName": palette["styleName"],
-            "background": design_preferences or palette["background"],
+            "styleName": "Индивидуальный стиль",
+            "background": design_preferences or "Фон подобран автоматически",
             "layoutReason": "Блоки расположены по смыслу пользовательского запроса.",
-            "primaryColor": palette["primaryColor"],
-            "secondaryColor": palette["secondaryColor"],
-            "accentColor": palette["accentColor"],
-            "textColor": palette["textColor"],
-            "surfaceColor": palette["surfaceColor"],
-            "fontMood": palette["fontMood"],
+            "primaryColor": "#f6efe7",
+            "secondaryColor": "#fffaf3",
+            "accentColor": "#7c4a2d",
+            "textColor": "#201915",
+            "surfaceColor": "#ffffff",
+            "fontMood": "Чистый современный стиль",
         },
         "pages": pages,
     }
