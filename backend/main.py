@@ -206,12 +206,12 @@ def normalize_button_href(button: dict[str, Any], site_json: dict[str, Any], bas
     raw_target = str(button.get("target") or "").strip()
     low = f"{text} {raw_target}".lower()
 
-    if raw_target.startswith(("tel:", "mailto:")):
-        return "#lead-form"
-    if any(w in low for w in ["позвон", "звон", "телефон", "контакт", "связ", "заяв", "запис", "консульт"]):
-        return "#lead-form"
-    if any(w in low for w in ["почт", "email", "mail"]):
-        return "#lead-form"
+    contact_words = ["позвон", "звон", "телефон", "контакт", "связ", "заяв", "запис", "консульт", "почт", "email", "mail"]
+    if raw_target.startswith(("tel:", "mailto:")) or any(w in low for w in contact_words):
+        if is_multipage(site_json):
+            contact_slug = first_page_with_meaning(site_json, ["контакт", "contacts", "заяв", "связ"])
+            return base_path if not contact_slug else f"{base_path}/{contact_slug}"
+        return "#contacts"
 
     if is_multipage(site_json):
         slug = target_page_for_button(text, raw_target, site_json, used)
@@ -233,8 +233,7 @@ def render_buttons(buttons: list[dict[str, Any]], site_json: dict[str, Any], bas
         text = escape(clean_generated_text(button.get("text") or f"Кнопка {index + 1}"))
         href = normalize_button_href(button, site_json, base_path, used_targets)
         class_name = "site-btn" if index == 0 else "site-btn site-btn-outline"
-        lead_attr = ' data-lead-open="true"' if href == "#lead-form" else ""
-        html += f'<a class="{class_name}" href="{escape(href)}"{lead_attr}>{text}</a>'
+        html += f'<a class="{class_name}" href="{escape(href)}">{text}</a>'
     return html
 
 
@@ -280,9 +279,9 @@ def render_section(section: dict[str, Any], page_index: int, section_index: int,
         <section class="content-section contact-section" id="{anchor_id}">
             <h2>{title}</h2>
             <div class="contact-grid">
-                <a href="#lead-form" data-lead-open="true" class="contact-card"><strong>Телефон</strong><p>{phone}</p></a>
-                <a href="#lead-form" data-lead-open="true" class="contact-card"><strong>Email</strong><p>{email}</p></a>
-                <a href="#lead-form" data-lead-open="true" class="contact-card"><strong>Адрес</strong><p>{address}</p></a>
+                <div class="contact-card"><strong>Телефон</strong><p>{phone}</p></div>
+                <div class="contact-card"><strong>Email</strong><p>{email}</p></div>
+                <div class="contact-card"><strong>Адрес</strong><p>{address}</p></div>
             </div>
         </section>
         '''
@@ -308,9 +307,9 @@ def ensure_contact_section(site_json: dict[str, Any]) -> str:
     <section class="content-section contact-section" id="contacts">
         <h2>Контакты</h2>
         <div class="contact-grid">
-            <a href="#lead-form" data-lead-open="true" class="contact-card"><strong>Телефон</strong><p>{phone}</p></a>
-            <a href="#lead-form" data-lead-open="true" class="contact-card"><strong>Email</strong><p>{email}</p></a>
-            <a href="#lead-form" data-lead-open="true" class="contact-card"><strong>Заявка</strong><p>Оставьте номер, чтобы с вами связались.</p></a>
+            <div class="contact-card"><strong>Телефон</strong><p>{phone}</p></div>
+            <div class="contact-card"><strong>Email</strong><p>{email}</p></div>
+            <div class="contact-card"><strong>Связь</strong><p>Используйте контакты выше, чтобы уточнить детали.</p></div>
         </div>
     </section>
     '''
@@ -330,7 +329,7 @@ def render_site_html(site_json: dict[str, Any], public_slug: str, current_page_s
 
     layout_variant = design_value(site_json, "layoutVariant", {"split", "centered", "editorial", "grid", "brutal", "calm"}, "split")
     card_style = design_value(site_json, "cardStyle", {"solid", "outline", "glass", "minimal", "raised"}, "solid")
-    hero_visual = design_value(site_json, "heroVisual", {"panels", "badges", "stats", "lines", "none"}, "panels")
+    hero_visual = design_value(site_json, "heroVisual", {"none"}, "none")
     section_shape = design_value(site_json, "sectionShape", {"rounded", "sharp", "pill", "asymmetric"}, "rounded")
     font_family_key = design_value(site_json, "fontFamily", {"serif", "sans", "mono", "display"}, "sans")
     density = design_value(site_json, "density", {"air", "normal", "compact"}, "normal")
@@ -389,10 +388,14 @@ def render_site_html(site_json: dict[str, Any], public_slug: str, current_page_s
     <title>{site_name}</title>
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        :root {{ --radius: 28px; --section-pad: clamp(34px, 5vw, 72px); --gap: 20px; --shadow: 0 26px 90px color-mix(in srgb, {primary} 72%, transparent); }}
+        :root {{ --radius: 30px; --section-pad: clamp(34px, 5vw, 78px); --gap: 22px; --shadow: 0 28px 92px color-mix(in srgb, {primary} 62%, transparent); }}
         html {{ scroll-behavior: smooth; }}
-        body {{ font-family: {font_family}; background: radial-gradient(circle at 16% 12%, color-mix(in srgb, {accent} 30%, transparent), transparent 26%), radial-gradient(circle at 82% 8%, color-mix(in srgb, {surface} 42%, transparent), transparent 30%), linear-gradient(135deg, {primary} 0%, {secondary} 100%); color: {text}; min-height: 100vh; overflow-x: hidden; }}
-        body::before {{ content: ""; position: fixed; inset: 0; pointer-events: none; background: linear-gradient(90deg, color-mix(in srgb, {text} 5%, transparent) 1px, transparent 1px), linear-gradient(color-mix(in srgb, {text} 5%, transparent) 1px, transparent 1px); background-size: 56px 56px; mask-image: linear-gradient(to bottom, black, transparent 70%); }}
+        body {{ font-family: {font_family}; background:
+            radial-gradient(circle at 12% 8%, color-mix(in srgb, {accent} 24%, transparent), transparent 30%),
+            radial-gradient(circle at 86% 14%, color-mix(in srgb, {surface} 34%, transparent), transparent 32%),
+            linear-gradient(135deg, color-mix(in srgb, {primary} 88%, #000 12%) 0%, {secondary} 100%);
+            color: {text}; min-height: 100vh; overflow-x: hidden; }}
+        body::before {{ content: ""; position: fixed; inset: 0; pointer-events: none; background: radial-gradient(circle at 50% -10%, color-mix(in srgb, {accent} 14%, transparent), transparent 42%); opacity: .85; }}
         body.shape-sharp {{ --radius: 4px; }} body.shape-pill {{ --radius: 42px; }} body.shape-asymmetric {{ --radius: 38px 8px 38px 8px; }}
         body.density-air {{ --section-pad: clamp(46px, 7vw, 92px); --gap: 26px; }} body.density-compact {{ --section-pad: clamp(24px, 4vw, 46px); --gap: 14px; }}
         .site-header {{ position: sticky; top: 14px; z-index: 20; width: min(1160px, 92%); margin: 18px auto 0; padding: 16px 18px; background: color-mix(in srgb, {surface} 78%, transparent); border: 1px solid color-mix(in srgb, {accent} 32%, transparent); border-radius: var(--radius); display: flex; justify-content: space-between; align-items: center; gap: 20px; backdrop-filter: blur(18px); box-shadow: var(--shadow); }}
@@ -401,8 +404,9 @@ def render_site_html(site_json: dict[str, Any], public_slug: str, current_page_s
         nav a {{ color: {text}; text-decoration: none; opacity: .82; padding: 10px 14px; border-radius: 999px; border: 1px solid color-mix(in srgb, {text} 12%, transparent); background: color-mix(in srgb, {surface} 64%, transparent); transition: .22s ease; }}
         nav a:hover, nav a.active {{ opacity: 1; border-color: {accent}; color: {accent}; transform: translateY(-2px); }}
         .page-wrapper {{ width: min(1160px, 90%); margin: 0 auto; padding: 64px 0; }}
-        .hero-block {{ min-height: 500px; display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(24px, 5vw, 56px); align-items: center; position: relative; }}
-        .hero-block::after {{ content: ""; position: absolute; right: 0; bottom: 40px; width: min(42vw, 420px); height: min(42vw, 420px); border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, {accent} 28%, transparent), transparent 62%); filter: blur(10px); opacity: .7; z-index: -1; }}
+        .hero-block {{ min-height: 520px; display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(24px, 5vw, 56px); align-items: center; position: relative; padding: clamp(28px, 5vw, 70px); border-radius: calc(var(--radius) * 1.15); background: linear-gradient(145deg, color-mix(in srgb, {surface} 70%, transparent), color-mix(in srgb, {accent} 10%, transparent)); border: 1px solid color-mix(in srgb, {accent} 24%, transparent); box-shadow: var(--shadow); overflow: hidden; }}
+        .hero-block::before {{ content: ""; position: absolute; inset: auto -12% -30% 38%; height: 70%; background: radial-gradient(circle, color-mix(in srgb, {accent} 18%, transparent), transparent 64%); filter: blur(24px); pointer-events: none; }}
+        .hero-content {{ position: relative; z-index: 1; }}
         .hero-kicker {{ color: {accent}; font-size: 13px; text-transform: uppercase; letter-spacing: .2em; margin-bottom: 16px; font-weight: 900; }}
         h1 {{ font-size: clamp(46px, 7.5vw, 96px); line-height: .92; margin-bottom: 26px; font-weight: 950; letter-spacing: -.06em; max-width: 1000px; }}
         h2 {{ font-size: clamp(32px, 4.8vw, 58px); line-height: .96; margin-bottom: 22px; letter-spacing: -.045em; }}
@@ -411,31 +415,20 @@ def render_site_html(site_json: dict[str, Any], public_slug: str, current_page_s
         .site-btn {{ display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 15px 22px; background: linear-gradient(135deg, {accent}, color-mix(in srgb, {accent} 74%, {text} 26%)); color: {primary}; text-decoration: none; font-weight: 950; border-radius: 999px; border: 1px solid color-mix(in srgb, {accent} 78%, {text} 22%); box-shadow: 0 14px 34px color-mix(in srgb, {accent} 32%, transparent); transition: transform .22s ease, box-shadow .22s ease; cursor: pointer; }}
         .site-btn:hover {{ transform: translateY(-3px); box-shadow: 0 20px 44px color-mix(in srgb, {accent} 42%, transparent); }}
         .site-btn-outline {{ background: color-mix(in srgb, {surface} 42%, transparent); color: {accent}; border-color: color-mix(in srgb, {accent} 48%, transparent); box-shadow: none; }}
-        .content-section {{ margin: 30px 0; padding: var(--section-pad); background: linear-gradient(145deg, color-mix(in srgb, {surface} 88%, transparent), color-mix(in srgb, {surface} 60%, {accent} 8%)); border: 1px solid color-mix(in srgb, {accent} 28%, transparent); border-radius: var(--radius); box-shadow: var(--shadow); position: relative; overflow: hidden; }}
-        .content-section::before {{ content: ""; position: absolute; inset: 0; background: radial-gradient(circle at top right, color-mix(in srgb, {accent} 12%, transparent), transparent 35%); pointer-events: none; }}
+        .content-section {{ margin: 34px 0; padding: var(--section-pad); background: linear-gradient(145deg, color-mix(in srgb, {surface} 84%, transparent), color-mix(in srgb, {surface} 58%, {accent} 10%)); border: 1px solid color-mix(in srgb, {accent} 26%, transparent); border-radius: var(--radius); box-shadow: var(--shadow); position: relative; overflow: hidden; }}
+        .content-section::before {{ content: ""; position: absolute; inset: 0; background: linear-gradient(120deg, color-mix(in srgb, {accent} 9%, transparent), transparent 42%); pointer-events: none; }}
         .content-section > * {{ position: relative; }}
-        .features-grid, .contact-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--gap); }}
-        .feature-item, .contact-card {{ display: block; color: {text}; text-decoration: none; padding: 26px; background: color-mix(in srgb, {surface} 66%, {accent} 10%); border: 1px solid color-mix(in srgb, {accent} 24%, transparent); border-radius: calc(var(--radius) * .72); transition: transform .22s ease, border-color .22s ease, background .22s ease; min-height: 150px; }}
-        .feature-item:hover, .contact-card:hover {{ transform: translateY(-4px); border-color: {accent}; background: color-mix(in srgb, {surface} 58%, {accent} 16%); }}
+        .features-grid, .contact-grid {{ display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap); }}
+        .feature-item, .contact-card {{ display: block; color: {text}; text-decoration: none; padding: 28px; background: linear-gradient(145deg, color-mix(in srgb, {surface} 72%, {accent} 8%), color-mix(in srgb, {surface} 86%, transparent)); border: 1px solid color-mix(in srgb, {accent} 22%, transparent); border-radius: calc(var(--radius) * .74); transition: transform .22s ease, border-color .22s ease, background .22s ease, box-shadow .22s ease; min-height: 156px; box-shadow: 0 14px 38px color-mix(in srgb, {primary} 36%, transparent); }}
+        .feature-item:hover, .contact-card:hover {{ transform: translateY(-5px); border-color: color-mix(in srgb, {accent} 74%, {text} 10%); background: linear-gradient(145deg, color-mix(in srgb, {surface} 62%, {accent} 16%), color-mix(in srgb, {surface} 84%, transparent)); box-shadow: 0 22px 58px color-mix(in srgb, {accent} 18%, transparent); }}
         .feature-item strong, .contact-card strong {{ display: block; font-size: 19px; margin-bottom: 10px; color: {accent}; letter-spacing: -.02em; }}
         .page-heading {{ padding: 34px 0 10px; }}
-        .lead-modal {{ position: fixed; inset: 0; display: none; place-items: center; padding: 24px; background: rgba(0,0,0,.58); backdrop-filter: blur(8px); z-index: 100; }}
-        .lead-modal.is-open {{ display: grid; }}
-        .lead-box {{ width: min(460px, 100%); background: color-mix(in srgb, {surface} 92%, {primary} 8%); color: {text}; border: 1px solid color-mix(in srgb, {accent} 38%, transparent); border-radius: 28px; padding: 28px; box-shadow: 0 34px 120px rgba(0,0,0,.42); }}
-        .lead-box h3 {{ font-size: 28px; margin-bottom: 10px; }}
-        .lead-box p {{ font-size: 15px; margin-bottom: 18px; }}
-        .lead-input {{ width: 100%; padding: 15px 16px; border-radius: 16px; border: 1px solid color-mix(in srgb, {accent} 35%, transparent); background: color-mix(in srgb, {primary} 30%, white 8%); color: {text}; outline: none; margin-bottom: 12px; }}
-        .lead-actions {{ display: flex; gap: 10px; flex-wrap: wrap; }}
-        .lead-close {{ background: transparent; color: {text}; border: 1px solid color-mix(in srgb, {text} 18%, transparent); }}
-        .lead-note {{ display: none; margin-top: 12px; color: {accent}; font-weight: 800; }}
-        .lead-note.is-visible {{ display: block; }}
-
         body.layout-centered .hero-block {{ grid-template-columns: 1fr; text-align: center; max-width: 940px; margin-inline: auto; }}
         body.layout-centered .button-row {{ justify-content: center; }}
         body.layout-editorial .site-header {{ border-left: 0; border-right: 0; border-radius: 0; }}
         body.layout-editorial .hero-block {{ grid-template-columns: .85fr 1.15fr; }}
         body.layout-editorial .content-section {{ background: transparent; border-width: 0 0 1px 0; border-radius: 0; padding-left: 0; padding-right: 0; box-shadow: none; }}
-        body.layout-grid {{ background-image: linear-gradient(color-mix(in srgb, {accent} 12%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, {accent} 12%, transparent) 1px, transparent 1px), linear-gradient(135deg, {primary}, {secondary}); background-size: 42px 42px, 42px 42px, auto; }}
+        body.layout-grid {{ background-image: radial-gradient(circle at 16% 18%, color-mix(in srgb, {accent} 16%, transparent), transparent 28%), radial-gradient(circle at 88% 8%, color-mix(in srgb, {surface} 25%, transparent), transparent 30%), linear-gradient(135deg, {primary}, {secondary}); }}
         body.layout-brutal .site-header, body.layout-brutal .content-section, body.layout-brutal .feature-item, body.layout-brutal .contact-card, body.layout-brutal .site-btn {{ box-shadow: 7px 7px 0 {accent}; border: 2px solid {text}; text-transform: uppercase; }}
         body.layout-brutal h1, body.layout-brutal h2 {{ letter-spacing: -.06em; }}
         body.layout-calm .hero-block {{ gap: 70px; }}
@@ -451,47 +444,6 @@ def render_site_html(site_json: dict[str, Any], public_slug: str, current_page_s
 <body class="{body_classes}">
     <header class="site-header"><a class="brand" href="{escape(brand_href)}">{site_name}</a><nav>{menu_html}</nav></header>
     {content_html}
-    <div class="lead-modal" id="lead-form" aria-hidden="true">
-        <div class="lead-box">
-            <h3>Оставить заявку</h3>
-            <p>Введите номер телефона. В этой MVP-версии форма показывает будущую функцию отправки заявки.</p>
-            <input class="lead-input" type="tel" placeholder="+7 900 000-00-00">
-            <div class="lead-actions">
-                <button class="site-btn" type="button" data-lead-submit>Отправить</button>
-                <button class="site-btn site-btn-outline lead-close" type="button" data-lead-close>Закрыть</button>
-            </div>
-            <div class="lead-note" data-lead-note>Заявка подготовлена. В будущей версии она будет отправляться владельцу сайта.</div>
-        </div>
-    </div>
-    <script>
-        const leadModal = document.getElementById('lead-form');
-        const leadNote = document.querySelector('[data-lead-note]');
-        document.querySelectorAll('[data-lead-open="true"]').forEach((item) => {{
-            item.addEventListener('click', (event) => {{
-                event.preventDefault();
-                leadModal.classList.add('is-open');
-                leadModal.setAttribute('aria-hidden', 'false');
-                if (leadNote) leadNote.classList.remove('is-visible');
-            }});
-        }});
-        document.querySelectorAll('[data-lead-close]').forEach((item) => {{
-            item.addEventListener('click', () => {{
-                leadModal.classList.remove('is-open');
-                leadModal.setAttribute('aria-hidden', 'true');
-            }});
-        }});
-        document.querySelectorAll('[data-lead-submit]').forEach((item) => {{
-            item.addEventListener('click', () => {{
-                if (leadNote) leadNote.classList.add('is-visible');
-            }});
-        }});
-        leadModal.addEventListener('click', (event) => {{
-            if (event.target === leadModal) {{
-                leadModal.classList.remove('is-open');
-                leadModal.setAttribute('aria-hidden', 'true');
-            }}
-        }});
-    </script>
 </body>
 </html>'''
 

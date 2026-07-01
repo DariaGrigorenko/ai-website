@@ -152,6 +152,7 @@ def generate_site_with_deepseek(
 - многостраничный сайт — от 2 до 5 страниц;
 - ИИ сам выбирает стиль, фон, цветовую схему, расположение блоков, названия блоков, тексты и кнопки;
 - дизайн должен реально меняться: меняй цвета, layoutVariant, cardStyle, sectionShape, fontFamily, density; heroVisual всегда ставь "none", потому что изображения и декоративные заглушки не нужны;
+- не создавай декоративные круги, овалы, пустые визуальные панели, псевдо-картинки или блоки без текста;
 - НЕ добавляй изображения и НЕ добавляй поля image/imageCategory/imageUrl;
 - готовый сайт НЕ должен визуально копировать интерфейс HGGps;
 - дизайн должен соответствовать бизнесу пользователя;
@@ -281,7 +282,7 @@ Email для контактов:
 11. Количество кнопок в hero на главной странице должно быть равно {button_count}.
 12. Для лендинга кнопки могут вести на разные блоки: #features, #services, #about, #portfolio, #schedule, #contacts.
 13. Для многостраничного сайта кнопки должны вести на разные страницы: /services, /about, /portfolio, /schedule, /contacts. Не делай все кнопки на одну страницу.
-14. Если кнопка явно про звонок — можно использовать tel:{contact_phone}. Если явно про почту — mailto:{contact_email}.
+14. Если кнопка про звонок, запись, заявку, консультацию или контакты — она должна вести в контактный блок или на страницу контактов, а не на tel/mailto и не на пустую страницу.
 15. Не используй пустые ссылки, "#", "javascript:void(0)" и несуществующие цели.
 16. Тексты кнопок и целевые страницы должны соответствовать главной цели сайта.
 17. Главный экран, порядок страниц, тексты и siteMap должны быть разными для разных целей сайта.
@@ -449,6 +450,7 @@ def normalize_generated_site(site_json: dict[str, Any], site_type: str, email: s
     design.setdefault("textColor", "#201915")
     design.setdefault("surfaceColor", "#ffffff")
     design.setdefault("fontMood", "Чистый современный стиль")
+    design["heroVisual"] = "none"
     inferred = infer_visual_design(description, design_preferences, desired_info)
     for key, value in inferred.items():
         design.setdefault(key, value)
@@ -598,10 +600,13 @@ def normalize_buttons(buttons: list[Any], pages: list[dict[str, Any]], phone: st
             target_raw = ""
 
         lower = f"{text} {target_raw}".lower()
-        if any(word in lower for word in ["позвон", "звон", "телефон"]):
-            target = "tel:" + re.sub(r"[^0-9+]", "", phone)
-        elif any(word in lower for word in ["почт", "email", "mail"]):
-            target = "mailto:" + email
+        if any(word in lower for word in ["позвон", "звон", "телефон", "почт", "email", "mail", "контакт", "связ", "заяв", "запис", "консульт"]):
+            if multipage:
+                page = choose_page_for_button("контакты", "contacts", pages, used, index)
+                used.add(page)
+                target = "/" + page if page else "/"
+            else:
+                target = "#contacts"
         elif multipage:
             page = choose_page_for_button(text, target_raw, pages, used, index)
             used.add(page)
@@ -668,21 +673,38 @@ BAD_SLOP_PHRASES = [
 def infer_visual_design(description: str = "", design_preferences: str = "", desired_info: str = "") -> dict[str, str]:
     text = f"{description} {design_preferences} {desired_info}".lower()
     if any(w in text for w in ["неон", "кибер", "it", "айти", "технолог", "стартап", "программ", "нейро"]):
-        return {"primaryColor": "#07111f", "secondaryColor": "#101a2e", "accentColor": "#38d5ff", "textColor": "#edf7ff", "surfaceColor": "#111b2f", "layoutVariant": "grid", "cardStyle": "glass", "heroVisual": "lines", "sectionShape": "sharp", "fontFamily": "mono", "density": "normal"}
+        return {"primaryColor": "#07111f", "secondaryColor": "#101a2e", "accentColor": "#38d5ff", "textColor": "#edf7ff", "surfaceColor": "#111b2f", "layoutVariant": "grid", "cardStyle": "glass", "heroVisual": "none", "sectionShape": "sharp", "fontFamily": "mono", "density": "normal"}
     if any(w in text for w in ["темн", "чёрн", "черн", "black", "dark"]):
-        return {"primaryColor": "#0e0f12", "secondaryColor": "#1b1c22", "accentColor": "#f0b35b", "textColor": "#f7f1e8", "surfaceColor": "#18191f", "layoutVariant": "split", "cardStyle": "outline", "heroVisual": "panels", "sectionShape": "sharp", "fontFamily": "sans", "density": "normal"}
+        return {"primaryColor": "#0e0f12", "secondaryColor": "#1b1c22", "accentColor": "#f0b35b", "textColor": "#f7f1e8", "surfaceColor": "#18191f", "layoutVariant": "split", "cardStyle": "outline", "heroVisual": "none", "sectionShape": "sharp", "fontFamily": "sans", "density": "normal"}
     if any(w in text for w in ["кафе", "кофе", "ресторан", "еда", "шаурм", "пекар", "бар"]):
-        return {"primaryColor": "#3b2418", "secondaryColor": "#8b5a35", "accentColor": "#f2c078", "textColor": "#fff6e8", "surfaceColor": "#4b2e1f", "layoutVariant": "calm", "cardStyle": "raised", "heroVisual": "badges", "sectionShape": "rounded", "fontFamily": "serif", "density": "air"}
+        return {"primaryColor": "#3b2418", "secondaryColor": "#8b5a35", "accentColor": "#f2c078", "textColor": "#fff6e8", "surfaceColor": "#4b2e1f", "layoutVariant": "calm", "cardStyle": "raised", "heroVisual": "none", "sectionShape": "rounded", "fontFamily": "serif", "density": "air"}
     if any(w in text for w in ["салон", "красот", "beauty", "космет", "стилист", "маник", "визаж"]):
-        return {"primaryColor": "#fff3f6", "secondaryColor": "#f5d7df", "accentColor": "#a84f68", "textColor": "#2c1820", "surfaceColor": "#ffffff", "layoutVariant": "centered", "cardStyle": "glass", "heroVisual": "badges", "sectionShape": "pill", "fontFamily": "display", "density": "air"}
+        return {"primaryColor": "#fff3f6", "secondaryColor": "#f5d7df", "accentColor": "#a84f68", "textColor": "#2c1820", "surfaceColor": "#ffffff", "layoutVariant": "centered", "cardStyle": "glass", "heroVisual": "none", "sectionShape": "pill", "fontFamily": "display", "density": "air"}
     if any(w in text for w in ["йога", "природ", "эко", "спорт", "фитнес", "здоров", "массаж"]):
-        return {"primaryColor": "#eaf2df", "secondaryColor": "#c7d8b6", "accentColor": "#557a46", "textColor": "#172315", "surfaceColor": "#f8fbf2", "layoutVariant": "calm", "cardStyle": "minimal", "heroVisual": "stats", "sectionShape": "rounded", "fontFamily": "sans", "density": "air"}
+        return {"primaryColor": "#eaf2df", "secondaryColor": "#c7d8b6", "accentColor": "#557a46", "textColor": "#172315", "surfaceColor": "#f8fbf2", "layoutVariant": "calm", "cardStyle": "minimal", "heroVisual": "none", "sectionShape": "rounded", "fontFamily": "sans", "density": "air"}
     if any(w in text for w in ["портфолио", "дизайн", "фото", "худож", "архитект", "творч"]):
         return {"primaryColor": "#f2eee7", "secondaryColor": "#d8d0c4", "accentColor": "#111111", "textColor": "#171717", "surfaceColor": "#fffaf1", "layoutVariant": "editorial", "cardStyle": "minimal", "heroVisual": "none", "sectionShape": "asymmetric", "fontFamily": "serif", "density": "air"}
     if any(w in text for w in ["мероприят", "концерт", "фестиваль", "ивент", "событ", "лекци", "форум"]):
-        return {"primaryColor": "#ffefe0", "secondaryColor": "#ff7a1a", "accentColor": "#101010", "textColor": "#111111", "surfaceColor": "#fff7ed", "layoutVariant": "brutal", "cardStyle": "outline", "heroVisual": "stats", "sectionShape": "sharp", "fontFamily": "display", "density": "compact"}
-    return {"primaryColor": "#f3efe7", "secondaryColor": "#ded6c8", "accentColor": "#365f7d", "textColor": "#171b1f", "surfaceColor": "#fffaf2", "layoutVariant": "split", "cardStyle": "solid", "heroVisual": "panels", "sectionShape": "rounded", "fontFamily": "sans", "density": "normal"}
+        return {"primaryColor": "#ffefe0", "secondaryColor": "#ff7a1a", "accentColor": "#101010", "textColor": "#111111", "surfaceColor": "#fff7ed", "layoutVariant": "brutal", "cardStyle": "outline", "heroVisual": "none", "sectionShape": "sharp", "fontFamily": "display", "density": "compact"}
+    return {"primaryColor": "#f3efe7", "secondaryColor": "#ded6c8", "accentColor": "#365f7d", "textColor": "#171b1f", "surfaceColor": "#fffaf2", "layoutVariant": "split", "cardStyle": "solid", "heroVisual": "none", "sectionShape": "rounded", "fontFamily": "sans", "density": "normal"}
 
+
+
+def _hex_to_rgb(value: str) -> tuple[int, int, int]:
+    value = value.strip().lstrip("#")
+    return int(value[0:2], 16), int(value[2:4], 16), int(value[4:6], 16)
+
+def _rel_luminance(value: str) -> float:
+    r, g, b = _hex_to_rgb(value)
+    def channel(c: int) -> float:
+        x = c / 255
+        return x / 12.92 if x <= 0.03928 else ((x + 0.055) / 1.055) ** 2.4
+    return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b)
+
+def _contrast(a: str, b: str) -> float:
+    la, lb = _rel_luminance(a), _rel_luminance(b)
+    high, low = max(la, lb), min(la, lb)
+    return (high + 0.05) / (low + 0.05)
 
 def sanitize_design(design: dict[str, Any], inferred: dict[str, str] | None = None) -> dict[str, str]:
     inferred = inferred or infer_visual_design()
@@ -707,7 +729,7 @@ def sanitize_design(design: dict[str, Any], inferred: dict[str, str] | None = No
         "fontMood": str(design.get("fontMood") or "Чистый современный стиль")[:120],
         "layoutVariant": enum(design.get("layoutVariant"), {"split", "centered", "editorial", "grid", "brutal", "calm"}, inferred["layoutVariant"]),
         "cardStyle": enum(design.get("cardStyle"), {"solid", "outline", "glass", "minimal", "raised"}, inferred["cardStyle"]),
-        "heroVisual": enum(design.get("heroVisual"), {"panels", "badges", "stats", "lines", "none"}, inferred["heroVisual"]),
+        "heroVisual": "none",
         "sectionShape": enum(design.get("sectionShape"), {"rounded", "sharp", "pill", "asymmetric"}, inferred["sectionShape"]),
         "fontFamily": enum(design.get("fontFamily"), {"serif", "sans", "mono", "display"}, inferred["fontFamily"]),
         "density": enum(design.get("density"), {"air", "normal", "compact"}, inferred["density"]),
@@ -715,9 +737,11 @@ def sanitize_design(design: dict[str, Any], inferred: dict[str, str] | None = No
 
     # Если ИИ вернул почти белую палитру без явного запроса на светлый стиль, берём тематическую палитру.
     too_white = result["primaryColor"].lower() in {"#ffffff", "#fffaf3", "#f6efe7", "#f7f7f7"} and result["secondaryColor"].lower() in {"#ffffff", "#fffaf3", "#f6efe7", "#f7f7f7"}
-    if too_white:
+    poor_contrast = _contrast(result["textColor"], result["primaryColor"]) < 3.8 or _contrast(result["textColor"], result["surfaceColor"]) < 3.4
+    if too_white or poor_contrast:
         for key in ["primaryColor", "secondaryColor", "accentColor", "textColor", "surfaceColor"]:
             result[key] = inferred[key]
+    result["heroVisual"] = "none"
     return result
 
 
@@ -840,7 +864,7 @@ def generate_mock_site(description: str, site_type: str, goal: str, company_name
             "fontMood": "Чистый современный стиль",
             "layoutVariant": "calm",
             "cardStyle": "raised",
-            "heroVisual": "panels",
+            "heroVisual": "none",
             "sectionShape": "rounded",
             "fontFamily": "sans",
             "density": "normal",

@@ -1,4 +1,4 @@
-const API_URL = "https://ai-website-exwx.onrender.com";
+const API_URL = window.location.origin;
 
 const themeToggle = document.getElementById("themeToggle");
 const sitePreview = document.getElementById("sitePreview");
@@ -225,11 +225,12 @@ function renderGeneratedResult(project) {
     <ul>${pagesHtml}</ul>
   `;
 
-  const previewUrl = project.publicUrl || new URL(project.fullPublicUrl).pathname;
+  const previewUrl = project.publicUrl || (project.fullPublicUrl ? new URL(project.fullPublicUrl).pathname : "");
   const fullUrl = project.fullPublicUrl || `${window.location.origin}${previewUrl}`;
+  const iframeUrl = `${previewUrl}${previewUrl.includes("?") ? "&" : "?"}preview=${Date.now()}`;
 
   sitePreview.innerHTML = `
-    <iframe class="preview-frame" src="${escapeHtml(previewUrl)}" title="Предпросмотр сайта"></iframe>
+    <iframe class="preview-frame" src="${escapeHtml(iframeUrl)}" title="Предпросмотр сайта"></iframe>
   `;
 
   publicLinkBox.classList.add("visible");
