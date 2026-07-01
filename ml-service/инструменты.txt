@@ -1,4 +1,0 @@
-fastapi
-uvicorn
-gemini
-python-dotenv
