@@ -87,7 +87,7 @@ textarea:focus, select:focus, input:focus { border-color: var(--accent); }
 
 .site-preview { margin-top: 18px; min-height: 560px; border-radius: 20px; overflow: hidden; border: 1px solid var(--border); background: var(--surface-2); }
 .preview-empty { min-height: 560px; display: flex; align-items: center; justify-content: center; text-align: center; color: var(--text-soft); padding: 30px; }
-.preview-frame { width: 100%; height: 700px; border: none; background: white; display: block; }
+.preview-frame { width: 100%; height: 700px; border: none; background: #11131e; display: block; }
 .status-box { margin-top: 14px; padding: 14px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px; color: var(--text-soft); line-height: 1.5; }
 .public-link-box { margin-top: 18px; padding: 16px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px; display: none; }
 .public-link-box.visible { display: block; }

@@ -151,7 +151,7 @@ def generate_site_with_deepseek(
 - лендинг — одна страница;
 - многостраничный сайт — от 2 до 5 страниц;
 - ИИ сам выбирает стиль, фон, цветовую схему, расположение блоков, названия блоков, тексты и кнопки;
-- дизайн должен реально меняться: меняй не только цвета, но и layoutVariant, cardStyle, heroVisual, sectionShape, fontFamily, density;
+- дизайн должен реально меняться: меняй цвета, layoutVariant, cardStyle, sectionShape, fontFamily, density; heroVisual всегда ставь "none", потому что изображения и декоративные заглушки не нужны;
 - НЕ добавляй изображения и НЕ добавляй поля image/imageCategory/imageUrl;
 - готовый сайт НЕ должен визуально копировать интерфейс HGGps;
 - дизайн должен соответствовать бизнесу пользователя;
@@ -218,7 +218,7 @@ Email для контактов:
     "fontMood": "Описание настроения шрифта",
     "layoutVariant": "split | centered | editorial | grid | brutal | calm",
     "cardStyle": "solid | outline | glass | minimal | raised",
-    "heroVisual": "panels | badges | stats | lines | none",
+    "heroVisual": "none",
     "sectionShape": "rounded | sharp | pill | asymmetric",
     "fontFamily": "serif | sans | mono | display",
     "density": "air | normal | compact"
@@ -286,7 +286,7 @@ Email для контактов:
 16. Тексты кнопок и целевые страницы должны соответствовать главной цели сайта.
 17. Главный экран, порядок страниц, тексты и siteMap должны быть разными для разных целей сайта.
 18. В каждом сайте обязательно должен быть контактный раздел или отдельная страница контактов с phone="{contact_phone}" и email="{contact_email}".
-19. ИИ сам выбирает визуальный стиль и layout по описанию пользователя. Обязательно заполняй поля design.layoutVariant, design.cardStyle, design.heroVisual, design.sectionShape, design.fontFamily, design.density.
+19. ИИ сам выбирает визуальный стиль и layout по описанию пользователя. Обязательно заполняй поля design.layoutVariant, design.cardStyle, design.sectionShape, design.fontFamily, design.density. Поле design.heroVisual всегда должно быть "none".
 19.1. Если пользователь просит тёмный/яркий/минималистичный/премиальный/неоновый/строгий/мягкий стиль — это должно менять цвета, шрифты, форму карточек, hero-блок, сетку и вид текстовых блоков.
 19.2. Не используй один и тот же внешний вид для разных запросов. Для IT подойдут grid/mono/sharp, для кафе — calm/rounded/raised, для портфолио — editorial/minimal/asymmetric, для мероприятия — brutal/display/outline.
 20. Структура страниц и тексты должны отличаться при перегенерации, если есть предыдущий вариант. Обязательно учитывай комментарий пользователя к перегенерации.

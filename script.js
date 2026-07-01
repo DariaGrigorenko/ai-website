@@ -186,7 +186,8 @@ async function generateSite(payload, isRegeneration) {
 
     const project = await response.json();
     currentProject = project;
-    generatedPublicLink = project.fullPublicUrl;
+    const projectPreviewUrl = project.publicUrl || (project.fullPublicUrl ? new URL(project.fullPublicUrl).pathname : "");
+    generatedPublicLink = project.fullPublicUrl || `${window.location.origin}${projectPreviewUrl}`;
 
     localStorage.setItem("currentProject", JSON.stringify(project));
     localStorage.setItem("generatedPublicLink", generatedPublicLink);
@@ -224,15 +225,18 @@ function renderGeneratedResult(project) {
     <ul>${pagesHtml}</ul>
   `;
 
+  const previewUrl = project.publicUrl || new URL(project.fullPublicUrl).pathname;
+  const fullUrl = project.fullPublicUrl || `${window.location.origin}${previewUrl}`;
+
   sitePreview.innerHTML = `
-    <iframe class="preview-frame" src="${escapeHtml(project.fullPublicUrl)}" title="Предпросмотр сайта"></iframe>
+    <iframe class="preview-frame" src="${escapeHtml(previewUrl)}" title="Предпросмотр сайта"></iframe>
   `;
 
   publicLinkBox.classList.add("visible");
   publicLinkBox.innerHTML = `
     <strong>Ссылка на сайт готова</strong>
     <p>Эту ссылку можно открыть в браузере или отправить другому человеку.</p>
-    <a href="${escapeHtml(project.fullPublicUrl)}" target="_blank" class="public-link">${escapeHtml(project.fullPublicUrl)}</a>
+    <a href="${escapeHtml(fullUrl)}" target="_blank" class="public-link">${escapeHtml(fullUrl)}</a>
     <div class="public-link-actions">
       <button class="btn btn-primary" onclick="copyGeneratedLink()">Скопировать ссылку</button>
       <button class="btn btn-secondary" onclick="openGeneratedLink()">Открыть сайт</button>
