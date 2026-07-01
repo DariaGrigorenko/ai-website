@@ -88,6 +88,35 @@ def clean_generated_text(value: Any) -> str:
     return text.strip()
 
 
+
+
+def looks_broken_text(value: Any) -> bool:
+    text = str(value or "").strip()
+    if not text:
+        return True
+    low = text.lower()
+    if re.search(r"(?:[0-9]п|п[0-9])", low) or re.search(r"п[а-я0-9]{0,2}п[а-я0-9]{0,2}п", low):
+        return True
+    letters = re.findall(r"[a-zA-Zа-яА-ЯёЁ]", text)
+    if len(letters) >= 6:
+        p_count = sum(1 for ch in letters if ch.lower() == "п")
+        if p_count / len(letters) > 0.45:
+            return True
+    return "�" in text
+
+def safe_text(value: Any, fallback: str) -> str:
+    cleaned = clean_generated_text(value)
+    return fallback if looks_broken_text(cleaned) else cleaned
+
+def logo_letters(name: str) -> str:
+    cleaned = re.sub(r"[^a-zA-Zа-яА-ЯёЁ0-9 ]+", " ", name or "")
+    words = [w for w in cleaned.split() if w]
+    if not words:
+        return "HG"
+    if len(words) == 1:
+        return words[0][:2].upper()
+    return (words[0][0] + words[1][0]).upper()
+
 def markdown_items_from_text(value: Any) -> list[dict[str, str]]:
     """Превращает строки вида **Название:** описание в карточки, чтобы на сайте не были видны звёздочки."""
     raw = str(value or "").strip()
@@ -230,7 +259,7 @@ def render_buttons(buttons: list[dict[str, Any]], site_json: dict[str, Any], bas
     for index, button in enumerate(buttons):
         if not isinstance(button, dict):
             button = {"text": str(button), "target": ""}
-        text = escape(clean_generated_text(button.get("text") or f"Кнопка {index + 1}"))
+        text = escape(safe_text(button.get("text") or f"Кнопка {index + 1}", f"Кнопка {index + 1}"))
         href = normalize_button_href(button, site_json, base_path, used_targets)
         class_name = "site-btn" if index == 0 else "site-btn site-btn-outline"
         html += f'<a class="{class_name}" href="{escape(href)}">{text}</a>'
@@ -242,14 +271,17 @@ def render_section(section: dict[str, Any], page_index: int, section_index: int,
     anchor_id = escape(section_anchor(section, page_index, section_index))
 
     if section_type == "hero":
-        title = escape(clean_generated_text(section.get("title") or ""))
-        subtitle = escape(clean_generated_text(section.get("subtitle") or ""))
+        site_name = safe_text(site_json.get("siteName"), "Сайт")
+        title = escape(safe_text(section.get("title") or site_name, site_name))
+        subtitle = escape(safe_text(section.get("subtitle") or "Оставьте заявку — мы свяжемся и уточним детали.", "Оставьте заявку — мы свяжемся и уточним детали."))
         buttons = section.get("buttons")
         if not isinstance(buttons, list):
             buttons = [{"text": section.get("buttonText", "Подробнее"), "target": "contacts"}]
+        initials = escape(logo_letters(site_name))
         return f'''
         <section class="hero-block" id="{anchor_id}">
             <div class="hero-content">
+                <div class="hero-logo"><span>{initials}</span></div>
                 <h1>{title}</h1>
                 <p>{subtitle}</p>
                 <div class="button-row">{render_buttons(buttons, site_json, base_path)}</div>
@@ -258,7 +290,7 @@ def render_section(section: dict[str, Any], page_index: int, section_index: int,
         '''
 
     if section_type == "features":
-        title = escape(clean_generated_text(section.get("title") or "Преимущества"))
+        title = escape(safe_text(section.get("title") or "Преимущества", "Преимущества"))
         items = section.get("items") if isinstance(section.get("items"), list) else []
         items_html = ""
         for item in items:
@@ -271,7 +303,7 @@ def render_section(section: dict[str, Any], page_index: int, section_index: int,
         return f'<section class="content-section" id="{anchor_id}"><h2>{title}</h2><div class="features-grid">{items_html}</div></section>'
 
     if section_type == "contact":
-        title = escape(clean_generated_text(section.get("title") or "Контакты"))
+        title = escape(safe_text(section.get("title") or "Контакты", "Контакты"))
         phone = escape(str(section.get("phone") or site_json.get("contact", {}).get("phone", "")))
         email = escape(str(section.get("email") or site_json.get("contact", {}).get("email", "")))
         address = escape(str(section.get("address") or "Адрес будет добавлен позже"))
@@ -286,7 +318,7 @@ def render_section(section: dict[str, Any], page_index: int, section_index: int,
         </section>
         '''
 
-    title = escape(clean_generated_text(section.get("title") or "Раздел"))
+    title = escape(safe_text(section.get("title") or "Раздел", "Раздел"))
     raw_description = section.get("description") or ""
     extracted_items = markdown_items_from_text(raw_description)
     if extracted_items:
@@ -404,11 +436,13 @@ def render_site_html(site_json: dict[str, Any], public_slug: str, current_page_s
         nav a {{ color: {text}; text-decoration: none; opacity: .82; padding: 10px 14px; border-radius: 999px; border: 1px solid color-mix(in srgb, {text} 12%, transparent); background: color-mix(in srgb, {surface} 64%, transparent); transition: .22s ease; }}
         nav a:hover, nav a.active {{ opacity: 1; border-color: {accent}; color: {accent}; transform: translateY(-2px); }}
         .page-wrapper {{ width: min(1160px, 90%); margin: 0 auto; padding: 64px 0; }}
-        .hero-block {{ min-height: 520px; display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(24px, 5vw, 56px); align-items: center; position: relative; padding: clamp(28px, 5vw, 70px); border-radius: calc(var(--radius) * 1.15); background: linear-gradient(145deg, color-mix(in srgb, {surface} 70%, transparent), color-mix(in srgb, {accent} 10%, transparent)); border: 1px solid color-mix(in srgb, {accent} 24%, transparent); box-shadow: var(--shadow); overflow: hidden; }}
+        .hero-block {{ min-height: 480px; display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(24px, 5vw, 56px); align-items: center; position: relative; padding: clamp(34px, 6vw, 82px); border-radius: calc(var(--radius) * 1.15); background: linear-gradient(145deg, color-mix(in srgb, {surface} 78%, transparent), color-mix(in srgb, {accent} 12%, transparent)); border: 1px solid color-mix(in srgb, {accent} 28%, transparent); box-shadow: var(--shadow); overflow: hidden; }}
         .hero-block::before {{ content: ""; position: absolute; inset: auto -12% -30% 38%; height: 70%; background: radial-gradient(circle, color-mix(in srgb, {accent} 18%, transparent), transparent 64%); filter: blur(24px); pointer-events: none; }}
-        .hero-content {{ position: relative; z-index: 1; }}
+        .hero-content {{ position: relative; z-index: 1; max-width: 960px; }}
+        .hero-logo {{ width: 88px; height: 88px; margin-bottom: 26px; border-radius: 28px; display: grid; place-items: center; background: linear-gradient(135deg, {accent}, color-mix(in srgb, {text} 18%, {accent})); color: {primary}; box-shadow: 0 22px 60px color-mix(in srgb, {accent} 35%, transparent); font-weight: 950; font-size: 30px; letter-spacing: -.06em; border: 1px solid color-mix(in srgb, {text} 22%, transparent); }}
+        .hero-logo span {{ transform: translateY(-1px); }}
         .hero-kicker {{ color: {accent}; font-size: 13px; text-transform: uppercase; letter-spacing: .2em; margin-bottom: 16px; font-weight: 900; }}
-        h1 {{ font-size: clamp(46px, 7.5vw, 96px); line-height: .92; margin-bottom: 26px; font-weight: 950; letter-spacing: -.06em; max-width: 1000px; }}
+        h1 {{ font-size: clamp(42px, 7vw, 88px); line-height: .96; margin-bottom: 26px; font-weight: 950; letter-spacing: -.055em; max-width: 1000px; overflow-wrap: anywhere; }}
         h2 {{ font-size: clamp(32px, 4.8vw, 58px); line-height: .96; margin-bottom: 22px; letter-spacing: -.045em; }}
         p {{ font-size: 18px; line-height: 1.75; opacity: .88; max-width: 840px; }}
         .button-row {{ display: flex; gap: 14px; flex-wrap: wrap; margin-top: 30px; }}
@@ -428,9 +462,9 @@ def render_site_html(site_json: dict[str, Any], public_slug: str, current_page_s
         body.layout-editorial .site-header {{ border-left: 0; border-right: 0; border-radius: 0; }}
         body.layout-editorial .hero-block {{ grid-template-columns: .85fr 1.15fr; }}
         body.layout-editorial .content-section {{ background: transparent; border-width: 0 0 1px 0; border-radius: 0; padding-left: 0; padding-right: 0; box-shadow: none; }}
-        body.layout-grid {{ background-image: radial-gradient(circle at 16% 18%, color-mix(in srgb, {accent} 16%, transparent), transparent 28%), radial-gradient(circle at 88% 8%, color-mix(in srgb, {surface} 25%, transparent), transparent 30%), linear-gradient(135deg, {primary}, {secondary}); }}
-        body.layout-brutal .site-header, body.layout-brutal .content-section, body.layout-brutal .feature-item, body.layout-brutal .contact-card, body.layout-brutal .site-btn {{ box-shadow: 7px 7px 0 {accent}; border: 2px solid {text}; text-transform: uppercase; }}
-        body.layout-brutal h1, body.layout-brutal h2 {{ letter-spacing: -.06em; }}
+        body.layout-grid {{ background-image: radial-gradient(circle at 18% 16%, color-mix(in srgb, {accent} 18%, transparent), transparent 30%), radial-gradient(circle at 88% 8%, color-mix(in srgb, {surface} 26%, transparent), transparent 32%), linear-gradient(135deg, {primary}, {secondary}); }}
+        body.layout-brutal .site-header, body.layout-brutal .content-section, body.layout-brutal .feature-item, body.layout-brutal .contact-card {{ border-width: 1px; box-shadow: 0 22px 60px color-mix(in srgb, {primary} 50%, transparent); text-transform: none; }}
+        body.layout-brutal .site-btn {{ text-transform: none; }}
         body.layout-calm .hero-block {{ gap: 70px; }}
 
         body.card-outline .content-section, body.card-outline .feature-item, body.card-outline .contact-card {{ background: transparent; border: 1.5px solid {accent}; }}

@@ -303,6 +303,8 @@ Email для контактов:
 27. Не создавай общий блок с названием "Что доступно", "Что мы предлагаем", "Наши возможности", если пользователь прямо не просил такой блок. Вместо этого называй блок конкретно: "Тренировки для начинающих", "Меню шаурмы", "Ремонт iPhone", "Запись на консультацию" и т.п.
 28. Не пиши несколько услуг/цен/событий одним абзацем через **Название:** описание. Если внутри раздела есть несколько пунктов, используй type="features" и массив items, где каждый пункт — отдельная карточка с title и description.
 29. В description допускается только обычный чистый текст без символов **. Для выделения смысла используй отдельные title в items.
+30. Не создавай пустые карточки, карточки с одной точкой, одним символом или без осмысленного текста.
+31. Название сайта и заголовки должны быть нормальными словами. Запрещён мусор вида "2п32п2п" или похожие наборы символов.
 """
 
     response = client.chat.completions.create(
@@ -407,15 +409,38 @@ def normalize_generated_site(site_json: dict[str, Any], site_type: str, email: s
         })
 
     used_anchors: set[str] = set()
+    contact_anchor_set = False
     for page_index, page in enumerate(pages):
+        page["title"] = clean_or_default(page.get("title"), "Главная" if page_index == 0 else "Страница")
         for section_index, section in enumerate(page.get("sections", [])):
             if not isinstance(section, dict):
                 continue
-            section["anchorId"] = make_section_anchor(section, page_index, section_index, used_anchors)
-            if section.get("type") == "contact":
-                section["anchorId"] = unique_anchor("contacts", used_anchors)
+            section["title"] = clean_or_default(section.get("title"), "Раздел")
+            if "subtitle" in section:
+                section["subtitle"] = clean_or_default(section.get("subtitle"), "Оставьте заявку — мы свяжемся и уточним детали.")
+            if "description" in section:
+                section["description"] = clean_or_default(section.get("description"), "")
+            if isinstance(section.get("items"), list):
+                cleaned_items = []
+                for item in section["items"]:
+                    if isinstance(item, dict):
+                        title = clean_or_default(item.get("title"), "")
+                        desc = clean_or_default(item.get("description"), "")
+                        if title or desc:
+                            cleaned_items.append({"title": title or "Подробнее", "description": desc or "Информация будет уточнена."})
+                    else:
+                        val = clean_or_default(item, "")
+                        if val:
+                            cleaned_items.append({"title": val, "description": ""})
+                section["items"] = cleaned_items
+            if section.get("type") == "contact" and not contact_anchor_set:
+                section["anchorId"] = "contacts"
+                used_anchors.add("contacts")
+                contact_anchor_set = True
                 section["phone"] = phone
                 section["email"] = email
+            else:
+                section["anchorId"] = make_section_anchor(section, page_index, section_index, used_anchors)
 
     hero = next((sec for sec in pages[0]["sections"] if isinstance(sec, dict) and sec.get("type") == "hero"), None) if pages else None
     if hero is not None:
@@ -441,17 +466,20 @@ def normalize_generated_site(site_json: dict[str, Any], site_type: str, email: s
     design = site_json.get("design")
     if not isinstance(design, dict):
         design = {}
+    inferred = infer_visual_design(description, design_preferences, desired_info)
     design.setdefault("styleName", "Индивидуальный стиль")
     design.setdefault("background", "Фон подобран по тематике проекта")
     design.setdefault("layoutReason", "Блоки расположены по смыслу запроса пользователя.")
-    design.setdefault("primaryColor", "#f6efe7")
-    design.setdefault("secondaryColor", "#fffaf3")
-    design.setdefault("accentColor", "#7c4a2d")
-    design.setdefault("textColor", "#201915")
-    design.setdefault("surfaceColor", "#ffffff")
+    design.setdefault("primaryColor", inferred.get("primaryColor", "#101522"))
+    design.setdefault("secondaryColor", inferred.get("secondaryColor", "#1b2440"))
+    design.setdefault("accentColor", inferred.get("accentColor", "#ef476f"))
+    design.setdefault("textColor", inferred.get("textColor", "#f7f4ee"))
+    design.setdefault("surfaceColor", inferred.get("surfaceColor", "#151b2e"))
     design.setdefault("fontMood", "Чистый современный стиль")
     design["heroVisual"] = "none"
-    inferred = infer_visual_design(description, design_preferences, desired_info)
+    # Цветовую палитру берём из красивого тематического набора, чтобы не было кислотного дизайна.
+    for key in ["primaryColor", "secondaryColor", "accentColor", "textColor", "surfaceColor"]:
+        design[key] = inferred[key]
     for key, value in inferred.items():
         design.setdefault(key, value)
     site_json["design"] = sanitize_design(design, inferred)
@@ -673,7 +701,7 @@ BAD_SLOP_PHRASES = [
 def infer_visual_design(description: str = "", design_preferences: str = "", desired_info: str = "") -> dict[str, str]:
     text = f"{description} {design_preferences} {desired_info}".lower()
     if any(w in text for w in ["неон", "кибер", "it", "айти", "технолог", "стартап", "программ", "нейро"]):
-        return {"primaryColor": "#07111f", "secondaryColor": "#101a2e", "accentColor": "#38d5ff", "textColor": "#edf7ff", "surfaceColor": "#111b2f", "layoutVariant": "grid", "cardStyle": "glass", "heroVisual": "none", "sectionShape": "sharp", "fontFamily": "mono", "density": "normal"}
+        return {"primaryColor": "#07111f", "secondaryColor": "#101a2e", "accentColor": "#38d5ff", "textColor": "#edf7ff", "surfaceColor": "#111b2f", "layoutVariant": "split", "cardStyle": "glass", "heroVisual": "none", "sectionShape": "sharp", "fontFamily": "mono", "density": "normal"}
     if any(w in text for w in ["темн", "чёрн", "черн", "black", "dark"]):
         return {"primaryColor": "#0e0f12", "secondaryColor": "#1b1c22", "accentColor": "#f0b35b", "textColor": "#f7f1e8", "surfaceColor": "#18191f", "layoutVariant": "split", "cardStyle": "outline", "heroVisual": "none", "sectionShape": "sharp", "fontFamily": "sans", "density": "normal"}
     if any(w in text for w in ["кафе", "кофе", "ресторан", "еда", "шаурм", "пекар", "бар"]):
@@ -685,7 +713,7 @@ def infer_visual_design(description: str = "", design_preferences: str = "", des
     if any(w in text for w in ["портфолио", "дизайн", "фото", "худож", "архитект", "творч"]):
         return {"primaryColor": "#f2eee7", "secondaryColor": "#d8d0c4", "accentColor": "#111111", "textColor": "#171717", "surfaceColor": "#fffaf1", "layoutVariant": "editorial", "cardStyle": "minimal", "heroVisual": "none", "sectionShape": "asymmetric", "fontFamily": "serif", "density": "air"}
     if any(w in text for w in ["мероприят", "концерт", "фестиваль", "ивент", "событ", "лекци", "форум"]):
-        return {"primaryColor": "#ffefe0", "secondaryColor": "#ff7a1a", "accentColor": "#101010", "textColor": "#111111", "surfaceColor": "#fff7ed", "layoutVariant": "brutal", "cardStyle": "outline", "heroVisual": "none", "sectionShape": "sharp", "fontFamily": "display", "density": "compact"}
+        return {"primaryColor": "#ffefe0", "secondaryColor": "#ff7a1a", "accentColor": "#101010", "textColor": "#111111", "surfaceColor": "#fff7ed", "layoutVariant": "editorial", "cardStyle": "outline", "heroVisual": "none", "sectionShape": "sharp", "fontFamily": "display", "density": "compact"}
     return {"primaryColor": "#f3efe7", "secondaryColor": "#ded6c8", "accentColor": "#365f7d", "textColor": "#171b1f", "surfaceColor": "#fffaf2", "layoutVariant": "split", "cardStyle": "solid", "heroVisual": "none", "sectionShape": "rounded", "fontFamily": "sans", "density": "normal"}
 
 
@@ -772,21 +800,53 @@ def reduce_neuro_slop(site_json: dict[str, Any], description: str = "", desired_
                         item["description"] = f"{item_title}: пункт связан с запросом пользователя — {source}."
 
 
+
+def looks_broken_generated_text(value: Any) -> bool:
+    text = str(value or "").strip()
+    if not text:
+        return True
+    low = text.lower()
+    if re.search(r"(?:[0-9]п|п[0-9])", low) or re.search(r"п[а-я0-9]{0,2}п[а-я0-9]{0,2}п", low):
+        return True
+    letters = re.findall(r"[a-zA-Zа-яА-ЯёЁ]", text)
+    if len(letters) >= 6:
+        p_count = sum(1 for ch in letters if ch.lower() == "п")
+        if p_count / len(letters) > 0.45:
+            return True
+    return "�" in text
+
+def clean_or_default(value: Any, fallback: str) -> str:
+    cleaned = strip_markdown_artifacts(value)
+    return fallback if looks_broken_generated_text(cleaned) else cleaned
+
 def resolve_site_name(company_name: str | None, description: str, ai_name: Any) -> str:
-    company_name = (company_name or "").strip()
-    if company_name:
-        return clean_site_name(company_name)
+    company_name = str(company_name or "").strip()
+    if company_name and not looks_broken_generated_text(company_name):
+        return company_name[:70]
 
-    extracted = extract_company_name(description)
-    if extracted:
-        return clean_site_name(extracted)
+    ai_name = strip_markdown_artifacts(ai_name).strip()
+    bad_prefixes = ["описание проекта", "сайт для", "проект", "лендинг", "многостраничный сайт"]
+    if ai_name and not looks_broken_generated_text(ai_name) and not any(ai_name.lower().startswith(prefix) for prefix in bad_prefixes):
+        return ai_name[:70]
 
-    ai_name = clean_site_name(str(ai_name or ""))
-    bad_prefixes = ("описание проекта", "сайт для", "проект", "главная")
-    if ai_name and len(ai_name) >= 3 and not ai_name.lower().startswith(bad_prefixes):
-        return ai_name
+    description = str(description or "").strip()
+    quoted = re.findall(r"[«\"]([^«»\"]{2,50})[»\"]", description)
+    for candidate in quoted:
+        if not looks_broken_generated_text(candidate):
+            return candidate.strip()[:70]
 
-    return make_title(description)
+    low = description.lower()
+    if "нож" in low or "ножи" in low:
+        return "Мастерская ножей"
+    if "кофе" in low or "кофей" in low:
+        return "Кофейня"
+    if "йога" in low:
+        return "Студия йоги"
+    if "теннис" in low:
+        return "Теннисный клуб"
+    if "ремонт" in low:
+        return "Сервисный центр"
+    return "Новый сайт"
 
 
 def clean_site_name(value: str) -> str:

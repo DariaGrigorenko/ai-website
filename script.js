@@ -225,12 +225,14 @@ function renderGeneratedResult(project) {
     <ul>${pagesHtml}</ul>
   `;
 
-  const previewUrl = project.publicUrl || (project.fullPublicUrl ? new URL(project.fullPublicUrl).pathname : "");
-  const fullUrl = project.fullPublicUrl || `${window.location.origin}${previewUrl}`;
-  const iframeUrl = `${previewUrl}${previewUrl.includes("?") ? "&" : "?"}preview=${Date.now()}`;
+  const previewPath = project.publicUrl || (project.fullPublicUrl ? new URL(project.fullPublicUrl).pathname : "");
+  let fullUrl = project.fullPublicUrl || `${window.location.origin}${previewPath}`;
+  fullUrl = fullUrl.replace(/^http:\/\//, "https://");
+  const iframeUrl = `${window.location.origin}${previewPath}${previewPath.includes("?") ? "&" : "?"}preview=${Date.now()}`;
 
   sitePreview.innerHTML = `
-    <iframe class="preview-frame" src="${escapeHtml(iframeUrl)}" title="Предпросмотр сайта"></iframe>
+    <iframe class="preview-frame" src="${escapeHtml(iframeUrl)}" title="Предпросмотр сайта" loading="eager"></iframe>
+    <div class="preview-fallback">Если предпросмотр не загрузился, нажми «Открыть сайт» слева. Ссылка уже готова.</div>
   `;
 
   publicLinkBox.classList.add("visible");
