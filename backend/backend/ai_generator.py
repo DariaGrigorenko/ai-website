@@ -9,10 +9,10 @@ from openai import OpenAI
 
 load_dotenv()
 
-AI_PROVIDER = os.getenv("AI_PROVIDER", "timeweb").lower().strip()
-TIMEWEB_API_KEY = os.getenv("TIMEWEB_API_KEY")
-TIMEWEB_MODEL = os.getenv("TIMEWEB_MODEL", "gpt-4.1")
-TIMEWEB_BASE_URL = os.getenv("TIMEWEB_BASE_URL", "https://agent.timeweb.cloud/api/v1/cloud-ai/agents/04c25d33-9d65-4874-8d00-36dc637fc8ab/v1")
+AI_PROVIDER = os.getenv("AI_PROVIDER", "deepseek").lower().strip()
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 
 DEFAULT_PHONE_POOL = [
     "+7 900 123-45-67",
@@ -78,7 +78,7 @@ def generate_site(
     buttons = clamp_button_count(button_count)
 
     try:
-        site_json = generate_site_with_timeweb(
+        site_json = generate_site_with_deepseek(
             description=description,
             site_type=site_type,
             goal=goal,
@@ -91,10 +91,10 @@ def generate_site(
             previous_site_json=previous_site_json,
             regeneration_note=regeneration_note,
         )
-        site_json["_generatedBy"] = "timeweb"
-        site_json["_aiModel"] = TIMEWEB_MODEL
+        site_json["_generatedBy"] = "deepseek"
+        site_json["_aiModel"] = DEEPSEEK_MODEL
     except Exception as error:
-        print("Timeweb AI generation failed. Mock generation used:", repr(error))
+        print("DeepSeek generation failed. Mock generation used:", repr(error))
         site_json = generate_mock_site(
             description=description,
             site_type=site_type,
@@ -115,7 +115,7 @@ def generate_site(
     return site_json
 
 
-def generate_site_with_timeweb(
+def generate_site_with_deepseek(
     description: str,
     site_type: str,
     goal: str,
@@ -128,10 +128,10 @@ def generate_site_with_timeweb(
     previous_site_json: dict[str, Any] | None,
     regeneration_note: str,
 ) -> dict[str, Any]:
-    if not TIMEWEB_API_KEY:
-        raise RuntimeError("TIMEWEB_API_KEY is missing")
+    if not DEEPSEEK_API_KEY:
+        raise RuntimeError("DEEPSEEK_API_KEY is missing")
 
-    client = OpenAI(api_key=TIMEWEB_API_KEY, base_url=TIMEWEB_BASE_URL)
+    client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL)
 
     previous_block = ""
     if previous_site_json:
@@ -291,7 +291,7 @@ Email для контактов:
 19.2. Не используй один и тот же внешний вид для разных запросов. Для IT подойдут grid/mono/sharp, для кафе — calm/rounded/raised, для портфолио — editorial/minimal/asymmetric, для мероприятия — brutal/display/outline.
 20. Структура страниц и тексты должны отличаться при перегенерации, если есть предыдущий вариант. Обязательно учитывай комментарий пользователя к перегенерации.
 21. JSON должен быть корректным.
-22. Не выводи на сайте технические фразы: Timeweb, DeepSeek, Gemini, provider, model, сгенерировано ИИ, стиль ИИ, объяснение логики блоков.
+22. Не выводи на сайте технические фразы: DeepSeek, Gemini, provider, model, сгенерировано ИИ, стиль ИИ, объяснение логики блоков.
 23. Не генерируй изображения и не добавляй image-поля.
 23.1. Не выводи системные значения из формы как декоративные подписи: не пиши на сайте отдельной строкой "Показать услуги", "Получить заявки", "Записать клиента" и другие названия целей. Цель нужна только для выбора структуры.
 24. Нейро-слоп запрещён. Не используй общие пустые фразы: "индивидуальный подход", "высокое качество", "профессиональная команда", "широкий спектр услуг", "лучшие решения", "современные решения", "комплексный подход", "мы ценим каждого клиента", "быстро и качественно", "ваш надёжный партнёр".
@@ -305,7 +305,7 @@ Email для контактов:
 """
 
     response = client.chat.completions.create(
-        model=TIMEWEB_MODEL,
+        model=DEEPSEEK_MODEL,
         messages=[
             {
                 "role": "system",
@@ -322,7 +322,7 @@ Email для контактов:
 
     raw_text = (response.choices[0].message.content or "").strip()
     if not raw_text:
-        raise ValueError("Timeweb AI returned empty response")
+        raise ValueError("DeepSeek returned empty response")
 
     try:
         site_json = json.loads(raw_text)
@@ -330,7 +330,7 @@ Email для контактов:
         start = raw_text.find("{")
         end = raw_text.rfind("}") + 1
         if start == -1 or end <= 0:
-            raise ValueError("Timeweb AI returned invalid JSON")
+            raise ValueError("DeepSeek returned invalid JSON")
         site_json = json.loads(raw_text[start:end])
 
     return normalize_generated_site(site_json, site_type, contact_email, contact_phone, button_count, company_name, description, design_preferences, desired_info)
