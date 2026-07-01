@@ -3,4 +3,4 @@ uvicorn[standard]
 pydantic
 python-slugify
 python-dotenv
-google-genai
+openai

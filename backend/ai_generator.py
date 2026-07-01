@@ -5,13 +5,14 @@ import re
 from typing import Any
 
 from dotenv import load_dotenv
-from google import genai
-from google.genai import types
+from openai import OpenAI
 
 load_dotenv()
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
+AI_PROVIDER = os.getenv("AI_PROVIDER", "deepseek").lower().strip()
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 
 DEFAULT_PHONE_POOL = [
     "+7 900 123-45-67",
@@ -77,7 +78,7 @@ def generate_site(
     buttons = clamp_button_count(button_count)
 
     try:
-        site_json = generate_site_with_gemini(
+        site_json = generate_site_with_deepseek(
             description=description,
             site_type=site_type,
             goal=goal,
@@ -90,10 +91,10 @@ def generate_site(
             previous_site_json=previous_site_json,
             regeneration_note=regeneration_note,
         )
-        site_json["_generatedBy"] = "gemini"
-        site_json["_aiModel"] = GEMINI_MODEL
+        site_json["_generatedBy"] = "deepseek"
+        site_json["_aiModel"] = DEEPSEEK_MODEL
     except Exception as error:
-        print("Gemini generation failed. Mock generation used:", repr(error))
+        print("DeepSeek generation failed. Mock generation used:", repr(error))
         site_json = generate_mock_site(
             description=description,
             site_type=site_type,
@@ -114,7 +115,7 @@ def generate_site(
     return site_json
 
 
-def generate_site_with_gemini(
+def generate_site_with_deepseek(
     description: str,
     site_type: str,
     goal: str,
@@ -127,10 +128,10 @@ def generate_site_with_gemini(
     previous_site_json: dict[str, Any] | None,
     regeneration_note: str,
 ) -> dict[str, Any]:
-    if not GEMINI_API_KEY:
-        raise RuntimeError("GEMINI_API_KEY is missing")
+    if not DEEPSEEK_API_KEY:
+        raise RuntimeError("DEEPSEEK_API_KEY is missing")
 
-    client = genai.Client(api_key=GEMINI_API_KEY)
+    client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL)
 
     previous_block = ""
     if previous_site_json:
@@ -290,7 +291,7 @@ Email для контактов:
 19.2. Не используй один и тот же внешний вид для разных запросов. Для IT подойдут grid/mono/sharp, для кафе — calm/rounded/raised, для портфолио — editorial/minimal/asymmetric, для мероприятия — brutal/display/outline.
 20. Структура страниц и тексты должны отличаться при перегенерации, если есть предыдущий вариант. Обязательно учитывай комментарий пользователя к перегенерации.
 21. JSON должен быть корректным.
-22. Не выводи на сайте технические фразы: Gemini, provider, model, сгенерировано ИИ, стиль ИИ, объяснение логики блоков.
+22. Не выводи на сайте технические фразы: DeepSeek, Gemini, provider, model, сгенерировано ИИ, стиль ИИ, объяснение логики блоков.
 23. Не генерируй изображения и не добавляй image-поля.
 23.1. Не выводи системные значения из формы как декоративные подписи: не пиши на сайте отдельной строкой "Показать услуги", "Получить заявки", "Записать клиента" и другие названия целей. Цель нужна только для выбора структуры.
 24. Нейро-слоп запрещён. Не используй общие пустые фразы: "индивидуальный подход", "высокое качество", "профессиональная команда", "широкий спектр услуг", "лучшие решения", "современные решения", "комплексный подход", "мы ценим каждого клиента", "быстро и качественно", "ваш надёжный партнёр".
@@ -303,18 +304,25 @@ Email для контактов:
 29. В description допускается только обычный чистый текст без символов **. Для выделения смысла используй отдельные title в items.
 """
 
-    response = client.models.generate_content(
-        model=GEMINI_MODEL,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            temperature=0.85 if previous_site_json else 0.65,
-        ),
+    response = client.chat.completions.create(
+        model=DEEPSEEK_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "Ты генератор JSON для ИИ-конструктора сайтов HGGps. "
+                    "Отвечай только валидным JSON без markdown, без пояснений и без HTML. "
+                    "Не используй общие рекламные фразы, пиши конкретно по запросу пользователя."
+                ),
+            },
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.85 if previous_site_json else 0.65,
     )
 
-    raw_text = (response.text or "").strip()
+    raw_text = (response.choices[0].message.content or "").strip()
     if not raw_text:
-        raise ValueError("Gemini returned empty response")
+        raise ValueError("DeepSeek returned empty response")
 
     try:
         site_json = json.loads(raw_text)
@@ -322,7 +330,7 @@ Email для контактов:
         start = raw_text.find("{")
         end = raw_text.rfind("}") + 1
         if start == -1 or end <= 0:
-            raise ValueError("Gemini returned invalid JSON")
+            raise ValueError("DeepSeek returned invalid JSON")
         site_json = json.loads(raw_text[start:end])
 
     return normalize_generated_site(site_json, site_type, contact_email, contact_phone, button_count, company_name, description, design_preferences, desired_info)
