@@ -75,6 +75,43 @@ def design_value(site_json: dict[str, Any], key: str, allowed: set[str], fallbac
     return value if value in allowed else fallback
 
 
+def clean_generated_text(value: Any) -> str:
+    """Убирает markdown-артефакты, которые Gemini иногда кладёт внутрь JSON-строк."""
+    text = str(value or "")
+    text = text.replace("**", "").replace("__", "").replace("`", "")
+    text = re.sub(r"\[(.*?)\]\((.*?)\)", r"\1", text)
+    text = re.sub(r"^[ \t]*[-*•][ \t]+", "", text, flags=re.MULTILINE)
+    text = re.sub(r"^[ \t]*\d+[.)][ \t]+", "", text, flags=re.MULTILINE)
+    text = re.sub(r"[ \t]+", " ", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
+def markdown_items_from_text(value: Any) -> list[dict[str, str]]:
+    """Превращает строки вида **Название:** описание в карточки, чтобы на сайте не были видны звёздочки."""
+    raw = str(value or "").strip()
+    if "**" not in raw:
+        return []
+    pattern = re.compile(r"\*\*\s*([^*:\n]{2,80})\s*:?\s*\*\*\s*([^*]+?)(?=(?:\n?\s*\*\*\s*[^*:\n]{2,80}\s*:?\s*\*\*)|$)", re.S)
+    items: list[dict[str, str]] = []
+    for title, description in pattern.findall(raw):
+        title = clean_generated_text(title).strip(" :—-")
+        description = clean_generated_text(description).strip(" :—-")
+        if title and description:
+            items.append({"title": title[:90], "description": description[:500]})
+    return items
+
+
+def render_rich_text(value: Any) -> str:
+    text = clean_generated_text(value)
+    if not text:
+        return ""
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if len(lines) > 1:
+        return "".join(f"<p>{escape(line)}</p>" for line in lines)
+    return f"<p>{escape(text)}</p>"
+
+
 def page_slug(page: dict[str, Any], index: int) -> str:
     raw = str(page.get("slug") or "").strip().strip("/")
     if index == 0 or raw in {"", "home", "glavnaia", "главная"}:
@@ -192,7 +229,7 @@ def render_buttons(buttons: list[dict[str, Any]], site_json: dict[str, Any], bas
     for index, button in enumerate(buttons):
         if not isinstance(button, dict):
             button = {"text": str(button), "target": ""}
-        text = escape(str(button.get("text") or f"Кнопка {index + 1}"))
+        text = escape(clean_generated_text(button.get("text") or f"Кнопка {index + 1}"))
         href = normalize_button_href(button, site_json, base_path, used_targets)
         class_name = "site-btn" if index == 0 else "site-btn site-btn-outline"
         html += f'<a class="{class_name}" href="{escape(href)}">{text}</a>'
@@ -204,15 +241,14 @@ def render_section(section: dict[str, Any], page_index: int, section_index: int,
     anchor_id = escape(section_anchor(section, page_index, section_index))
 
     if section_type == "hero":
-        title = escape(str(section.get("title") or ""))
-        subtitle = escape(str(section.get("subtitle") or ""))
+        title = escape(clean_generated_text(section.get("title") or ""))
+        subtitle = escape(clean_generated_text(section.get("subtitle") or ""))
         buttons = section.get("buttons")
         if not isinstance(buttons, list):
             buttons = [{"text": section.get("buttonText", "Подробнее"), "target": "contacts"}]
         return f'''
         <section class="hero-block" id="{anchor_id}">
             <div class="hero-content">
-                <p class="hero-kicker">{escape(str(site_json.get('goal') or ''))}</p>
                 <h1>{title}</h1>
                 <p>{subtitle}</p>
                 <div class="button-row">{render_buttons(buttons, site_json, base_path)}</div>
@@ -222,20 +258,20 @@ def render_section(section: dict[str, Any], page_index: int, section_index: int,
         '''
 
     if section_type == "features":
-        title = escape(str(section.get("title") or "Преимущества"))
+        title = escape(clean_generated_text(section.get("title") or "Преимущества"))
         items = section.get("items") if isinstance(section.get("items"), list) else []
         items_html = ""
         for item in items:
             if isinstance(item, dict):
-                item_title = escape(str(item.get("title") or "Пункт"))
-                item_description = escape(str(item.get("description") or ""))
+                item_title = escape(clean_generated_text(item.get("title") or "Пункт"))
+                item_description = escape(clean_generated_text(item.get("description") or ""))
                 items_html += f'<div class="feature-item"><strong>{item_title}</strong><p>{item_description}</p></div>'
             else:
                 items_html += f'<div class="feature-item"><strong>{escape(str(item))}</strong></div>'
         return f'<section class="content-section" id="{anchor_id}"><h2>{title}</h2><div class="features-grid">{items_html}</div></section>'
 
     if section_type == "contact":
-        title = escape(str(section.get("title") or "Контакты"))
+        title = escape(clean_generated_text(section.get("title") or "Контакты"))
         phone = escape(str(section.get("phone") or site_json.get("contact", {}).get("phone", "")))
         email = escape(str(section.get("email") or site_json.get("contact", {}).get("email", "")))
         address = escape(str(section.get("address") or "Адрес будет добавлен позже"))
@@ -250,9 +286,17 @@ def render_section(section: dict[str, Any], page_index: int, section_index: int,
         </section>
         '''
 
-    title = escape(str(section.get("title") or "Раздел"))
-    description = escape(str(section.get("description") or ""))
-    return f'<section class="content-section card-section" id="{anchor_id}"><h2>{title}</h2><p>{description}</p></section>'
+    title = escape(clean_generated_text(section.get("title") or "Раздел"))
+    raw_description = section.get("description") or ""
+    extracted_items = markdown_items_from_text(raw_description)
+    if extracted_items:
+        items_html = "".join(
+            f'<div class="feature-item"><strong>{escape(item["title"])}</strong><p>{escape(item["description"])}</p></div>'
+            for item in extracted_items
+        )
+        return f'<section class="content-section" id="{anchor_id}"><h2>{title}</h2><div class="features-grid">{items_html}</div></section>'
+    description_html = render_rich_text(raw_description)
+    return f'<section class="content-section card-section" id="{anchor_id}"><h2>{title}</h2>{description_html}</section>'
 
 
 def ensure_contact_section(site_json: dict[str, Any]) -> str:
@@ -306,7 +350,7 @@ def render_site_html(site_json: dict[str, Any], public_slug: str, current_page_s
         for page, slug in pages:
             href = base_path if not slug else f"{base_path}/{slug}"
             active = "active" if slug == current_page_slug else ""
-            menu_html += f'<a class="{active}" href="{href}">{escape(str(page.get("title") or "Страница"))}</a>'
+            menu_html += f'<a class="{active}" href="{href}">{escape(clean_generated_text(page.get("title") or "Страница"))}</a>'
         content_pages = [(current_page, current_index)]
         brand_href = base_path
     else:
@@ -314,7 +358,7 @@ def render_site_html(site_json: dict[str, Any], public_slug: str, current_page_s
         menu_html = ""
         for i, section in enumerate(first_page.get("sections", [])):
             if isinstance(section, dict) and section.get("type") != "hero":
-                title = escape(str(section.get("title") or section.get("type") or "Раздел"))
+                title = escape(clean_generated_text(section.get("title") or section.get("type") or "Раздел"))
                 anchor = escape(section_anchor(section, 0, i))
                 menu_html += f'<a href="#{anchor}">{title}</a>'
         content_pages = [(first_page, 0)]
@@ -323,7 +367,7 @@ def render_site_html(site_json: dict[str, Any], public_slug: str, current_page_s
     content_html = ""
     has_contacts = False
     for page, page_index in content_pages:
-        page_title = escape(str(page.get("title") or "Страница"))
+        page_title = escape(clean_generated_text(page.get("title") or "Страница"))
         content_html += '<main class="page-wrapper">'
         if multipage and page_index > 0:
             content_html += f'<section class="page-heading"><p class="hero-kicker">{site_name}</p><h1>{page_title}</h1></section>'
