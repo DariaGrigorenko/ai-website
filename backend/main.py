@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta
 from html import escape
 from uuid import uuid4
@@ -451,7 +452,7 @@ def render_site_html(site_json: dict[str, Any], public_slug: str, current_page_s
 
 @app.get("/")
 def health_check():
-    return {"status": "ok", "service": "HGGps Backend API", "aiProvider": "Gemini", "message": "Backend работает"}
+    return {"status": "ok", "service": "HGGps Backend API", "aiProvider": os.getenv("AI_PROVIDER", "deepseek"), "message": "Backend работает"}
 
 
 @app.post("/api/projects/generate")
