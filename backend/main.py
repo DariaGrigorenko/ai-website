@@ -69,6 +69,12 @@ def css_color(site_json: dict[str, Any], key: str, fallback: str) -> str:
     return safe_hex(design.get(key), fallback)
 
 
+def design_value(site_json: dict[str, Any], key: str, allowed: set[str], fallback: str) -> str:
+    design = site_json.get("design", {}) if isinstance(site_json.get("design"), dict) else {}
+    value = str(design.get(key) or "").strip().lower()
+    return value if value in allowed else fallback
+
+
 def page_slug(page: dict[str, Any], index: int) -> str:
     raw = str(page.get("slug") or "").strip().strip("/")
     if index == 0 or raw in {"", "home", "glavnaia", "главная"}:
@@ -277,6 +283,20 @@ def render_site_html(site_json: dict[str, Any], public_slug: str, current_page_s
     text = css_color(site_json, "textColor", "#f7f0e6")
     surface = css_color(site_json, "surfaceColor", "#1f1d1a")
 
+    layout_variant = design_value(site_json, "layoutVariant", {"split", "centered", "editorial", "grid", "brutal", "calm"}, "split")
+    card_style = design_value(site_json, "cardStyle", {"solid", "outline", "glass", "minimal", "raised"}, "solid")
+    hero_visual = design_value(site_json, "heroVisual", {"panels", "badges", "stats", "lines", "none"}, "panels")
+    section_shape = design_value(site_json, "sectionShape", {"rounded", "sharp", "pill", "asymmetric"}, "rounded")
+    font_family_key = design_value(site_json, "fontFamily", {"serif", "sans", "mono", "display"}, "sans")
+    density = design_value(site_json, "density", {"air", "normal", "compact"}, "normal")
+    font_family = {
+        "serif": "Georgia, 'Times New Roman', serif",
+        "sans": "Inter, Arial, sans-serif",
+        "mono": "'JetBrains Mono', Consolas, monospace",
+        "display": "'Trebuchet MS', Arial, sans-serif",
+    }.get(font_family_key, "Inter, Arial, sans-serif")
+    body_classes = f"layout-{layout_variant} card-{card_style} hero-{hero_visual} shape-{section_shape} density-{density}"
+
     if multipage:
         selected = next(((page, slug, i) for i, (page, slug) in enumerate(pages) if slug == current_page_slug), None)
         if selected is None:
@@ -324,34 +344,61 @@ def render_site_html(site_json: dict[str, Any], public_slug: str, current_page_s
     <title>{site_name}</title>
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        :root {{ --radius: 24px; --section-pad: clamp(30px, 5vw, 64px); --gap: 18px; }}
         html {{ scroll-behavior: smooth; }}
-        body {{ font-family: Georgia, 'Times New Roman', serif; background: linear-gradient(135deg, {primary} 0%, {secondary} 100%); color: {text}; min-height: 100vh; }}
-        .site-header {{ width: min(1160px, 92%); margin: 22px auto 0; padding: 18px 20px; background: color-mix(in srgb, {surface} 88%, transparent); border: 1px solid color-mix(in srgb, {accent} 35%, transparent); border-radius: 8px; display: flex; justify-content: space-between; align-items: center; gap: 20px; }}
-        .brand {{ color: {text}; text-decoration: none; font-size: 25px; font-weight: 800; letter-spacing: .02em; }}
+        body {{ font-family: {font_family}; background: radial-gradient(circle at 12% 10%, color-mix(in srgb, {accent} 24%, transparent), transparent 28%), linear-gradient(135deg, {primary} 0%, {secondary} 100%); color: {text}; min-height: 100vh; }}
+        body.shape-sharp {{ --radius: 2px; }} body.shape-pill {{ --radius: 38px; }} body.shape-asymmetric {{ --radius: 34px 6px 34px 6px; }}
+        body.density-air {{ --section-pad: clamp(42px, 7vw, 86px); --gap: 24px; }} body.density-compact {{ --section-pad: clamp(22px, 4vw, 42px); --gap: 12px; }}
+        .site-header {{ width: min(1160px, 92%); margin: 22px auto 0; padding: 18px 20px; background: color-mix(in srgb, {surface} 82%, transparent); border: 1px solid color-mix(in srgb, {accent} 35%, transparent); border-radius: var(--radius); display: flex; justify-content: space-between; align-items: center; gap: 20px; backdrop-filter: blur(14px); }}
+        .brand {{ color: {text}; text-decoration: none; font-size: 25px; font-weight: 900; letter-spacing: .02em; }}
         nav {{ display: flex; gap: 10px; flex-wrap: wrap; }}
-        nav a {{ color: {text}; text-decoration: none; opacity: .8; padding: 9px 12px; border-bottom: 2px solid transparent; }}
-        nav a:hover, nav a.active {{ opacity: 1; border-bottom-color: {accent}; color: {accent}; }}
+        nav a {{ color: {text}; text-decoration: none; opacity: .82; padding: 9px 12px; border-radius: calc(var(--radius) / 2); border: 1px solid transparent; }}
+        nav a:hover, nav a.active {{ opacity: 1; border-color: {accent}; color: {accent}; }}
         .page-wrapper {{ width: min(1160px, 90%); margin: 0 auto; padding: 56px 0; }}
-        .hero-block {{ min-height: 520px; display: grid; grid-template-columns: 1.15fr .85fr; gap: 36px; align-items: center; }}
-        .hero-kicker {{ color: {accent}; font-size: 14px; text-transform: uppercase; letter-spacing: .18em; margin-bottom: 16px; font-family: Arial, sans-serif; }}
-        h1 {{ font-size: clamp(42px, 7vw, 88px); line-height: .95; margin-bottom: 24px; font-weight: 900; }}
-        h2 {{ font-size: clamp(30px, 4.6vw, 54px); line-height: 1; margin-bottom: 20px; }}
-        p {{ font-size: 18px; line-height: 1.75; opacity: .86; }}
+        .hero-block {{ min-height: 520px; display: grid; grid-template-columns: 1.15fr .85fr; gap: clamp(24px, 5vw, 56px); align-items: center; }}
+        .hero-kicker {{ color: {accent}; font-size: 13px; text-transform: uppercase; letter-spacing: .18em; margin-bottom: 16px; font-weight: 800; }}
+        h1 {{ font-size: clamp(42px, 7vw, 88px); line-height: .95; margin-bottom: 24px; font-weight: 950; letter-spacing: -.04em; }}
+        h2 {{ font-size: clamp(30px, 4.6vw, 54px); line-height: 1; margin-bottom: 20px; letter-spacing: -.03em; }}
+        p {{ font-size: 18px; line-height: 1.75; opacity: .88; }}
         .button-row {{ display: flex; gap: 12px; flex-wrap: wrap; margin-top: 28px; }}
-        .site-btn {{ display: inline-block; padding: 14px 20px; background: {accent}; color: #111; text-decoration: none; font-weight: 900; border-radius: 4px; font-family: Arial, sans-serif; }}
-        .site-btn-outline {{ background: transparent; border: 1px solid {accent}; color: {accent}; }}
-        .hero-panel {{ min-height: 360px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }}
-        .panel-card {{ background: color-mix(in srgb, {surface} 80%, {accent} 20%); border: 1px solid color-mix(in srgb, {accent} 35%, transparent); border-radius: 6px; }}
+        .site-btn {{ display: inline-block; padding: 14px 20px; background: {accent}; color: {primary}; text-decoration: none; font-weight: 900; border-radius: calc(var(--radius) / 1.7); border: 1px solid {accent}; }}
+        .site-btn-outline {{ background: transparent; color: {accent}; }}
+        .hero-panel {{ min-height: 360px; display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap); }}
+        .panel-card {{ background: color-mix(in srgb, {surface} 72%, {accent} 18%); border: 1px solid color-mix(in srgb, {accent} 42%, transparent); border-radius: var(--radius); box-shadow: 0 24px 80px color-mix(in srgb, {primary} 75%, transparent); }}
         .panel-card.main {{ grid-row: span 2; }} .panel-card.wide {{ grid-column: span 2; min-height: 90px; }}
-        .content-section {{ margin: 28px 0; padding: clamp(28px, 5vw, 54px); background: color-mix(in srgb, {surface} 88%, transparent); border: 1px solid color-mix(in srgb, {accent} 28%, transparent); border-radius: 6px; }}
-        .features-grid, .contact-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }}
-        .feature-item, .contact-card {{ display: block; color: {text}; text-decoration: none; padding: 22px; background: color-mix(in srgb, {surface} 74%, {accent} 10%); border: 1px solid color-mix(in srgb, {accent} 24%, transparent); border-radius: 5px; }}
+        .content-section {{ margin: 28px 0; padding: var(--section-pad); background: color-mix(in srgb, {surface} 86%, transparent); border: 1px solid color-mix(in srgb, {accent} 28%, transparent); border-radius: var(--radius); }}
+        .features-grid, .contact-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--gap); }}
+        .feature-item, .contact-card {{ display: block; color: {text}; text-decoration: none; padding: 24px; background: color-mix(in srgb, {surface} 74%, {accent} 10%); border: 1px solid color-mix(in srgb, {accent} 24%, transparent); border-radius: calc(var(--radius) * .75); }}
         .feature-item strong, .contact-card strong {{ display: block; font-size: 18px; margin-bottom: 10px; color: {accent}; }}
         .page-heading {{ padding: 28px 0 6px; }}
+
+        body.layout-centered .hero-block {{ grid-template-columns: 1fr; text-align: center; max-width: 920px; margin-inline: auto; }}
+        body.layout-centered .button-row {{ justify-content: center; }}
+        body.layout-centered .hero-panel {{ max-width: 680px; width: 100%; margin: 0 auto; }}
+        body.layout-editorial .site-header {{ border-left: 0; border-right: 0; border-radius: 0; }}
+        body.layout-editorial .hero-block {{ grid-template-columns: .85fr 1.15fr; }}
+        body.layout-editorial .content-section {{ background: transparent; border-width: 0 0 1px 0; border-radius: 0; padding-left: 0; padding-right: 0; }}
+        body.layout-grid {{ background-image: linear-gradient(color-mix(in srgb, {accent} 12%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, {accent} 12%, transparent) 1px, transparent 1px), linear-gradient(135deg, {primary}, {secondary}); background-size: 42px 42px, 42px 42px, auto; }}
+        body.layout-brutal .site-header, body.layout-brutal .content-section, body.layout-brutal .feature-item, body.layout-brutal .contact-card, body.layout-brutal .site-btn {{ box-shadow: 7px 7px 0 {accent}; border: 2px solid {text}; text-transform: uppercase; }}
+        body.layout-brutal h1, body.layout-brutal h2 {{ letter-spacing: -.06em; }}
+        body.layout-calm .hero-block {{ gap: 64px; }}
+
+        body.card-outline .content-section, body.card-outline .feature-item, body.card-outline .contact-card {{ background: transparent; border: 1.5px solid {accent}; }}
+        body.card-glass .content-section, body.card-glass .feature-item, body.card-glass .contact-card {{ background: color-mix(in srgb, {surface} 58%, transparent); backdrop-filter: blur(18px); }}
+        body.card-minimal .content-section, body.card-minimal .feature-item, body.card-minimal .contact-card {{ background: transparent; border-color: color-mix(in srgb, {text} 18%, transparent); }}
+        body.card-raised .feature-item, body.card-raised .contact-card, body.card-raised .content-section {{ box-shadow: 0 18px 60px color-mix(in srgb, {primary} 70%, transparent); }}
+
+        body.hero-none .hero-panel {{ display: none; }} body.hero-none .hero-block {{ grid-template-columns: 1fr; }}
+        body.hero-lines .panel-card {{ min-height: 4px; border-radius: 999px; }}
+        body.hero-lines .hero-panel {{ align-content: center; transform: rotate(-2deg); }}
+        body.hero-badges .hero-panel {{ display: flex; flex-wrap: wrap; align-content: center; }}
+        body.hero-badges .panel-card {{ width: 46%; min-height: 130px; border-radius: 999px; }}
+        body.hero-stats .panel-card {{ display: grid; place-items: center; }}
+        body.hero-stats .panel-card::after {{ content: "•"; font-size: 72px; color: {accent}; }}
         @media (max-width: 850px) {{ .site-header {{ flex-direction: column; align-items: flex-start; }} .hero-block, .features-grid, .contact-grid {{ grid-template-columns: 1fr; }} .hero-panel {{ min-height: 220px; }} }}
     </style>
 </head>
-<body>
+<body class="{body_classes}">
     <header class="site-header"><a class="brand" href="{escape(brand_href)}">{site_name}</a><nav>{menu_html}</nav></header>
     {content_html}
 </body>

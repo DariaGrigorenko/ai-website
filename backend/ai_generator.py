@@ -150,6 +150,7 @@ def generate_site_with_gemini(
 - лендинг — одна страница;
 - многостраничный сайт — от 2 до 5 страниц;
 - ИИ сам выбирает стиль, фон, цветовую схему, расположение блоков, названия блоков, тексты и кнопки;
+- дизайн должен реально меняться: меняй не только цвета, но и layoutVariant, cardStyle, heroVisual, sectionShape, fontFamily, density;
 - НЕ добавляй изображения и НЕ добавляй поля image/imageCategory/imageUrl;
 - готовый сайт НЕ должен визуально копировать интерфейс HGGps;
 - дизайн должен соответствовать бизнесу пользователя;
@@ -211,7 +212,13 @@ Email для контактов:
     "accentColor": "#HEX",
     "textColor": "#HEX",
     "surfaceColor": "#HEX",
-    "fontMood": "Описание настроения шрифта"
+    "fontMood": "Описание настроения шрифта",
+    "layoutVariant": "split | centered | editorial | grid | brutal | calm",
+    "cardStyle": "solid | outline | glass | minimal | raised",
+    "heroVisual": "panels | badges | stats | lines | none",
+    "sectionShape": "rounded | sharp | pill | asymmetric",
+    "fontFamily": "serif | sans | mono | display",
+    "density": "air | normal | compact"
   }},
   "siteMap": [
     {{"title": "Название страницы", "slug": "/", "description": "Краткое описание страницы"}}
@@ -276,13 +283,19 @@ Email для контактов:
 16. Тексты кнопок и целевые страницы должны соответствовать главной цели сайта.
 17. Главный экран, порядок страниц, тексты и siteMap должны быть разными для разных целей сайта.
 18. В каждом сайте обязательно должен быть контактный раздел или отдельная страница контактов с phone="{contact_phone}" и email="{contact_email}".
-19. ИИ сам выбирает визуальный стиль и layout по описанию пользователя.
+19. ИИ сам выбирает визуальный стиль и layout по описанию пользователя. Обязательно заполняй поля design.layoutVariant, design.cardStyle, design.heroVisual, design.sectionShape, design.fontFamily, design.density.
+19.1. Если пользователь просит тёмный/яркий/минималистичный/премиальный/неоновый/строгий/мягкий стиль — это должно менять цвета, шрифты, форму карточек, hero-блок, сетку и вид текстовых блоков.
+19.2. Не используй один и тот же внешний вид для разных запросов. Для IT подойдут grid/mono/sharp, для кафе — calm/rounded/raised, для портфолио — editorial/minimal/asymmetric, для мероприятия — brutal/display/outline.
 20. Структура страниц и тексты должны отличаться при перегенерации, если есть предыдущий вариант. Обязательно учитывай комментарий пользователя к перегенерации.
 21. JSON должен быть корректным.
 22. Не выводи на сайте технические фразы: Gemini, provider, model, сгенерировано ИИ, стиль ИИ, объяснение логики блоков.
 23. Не генерируй изображения и не добавляй image-поля.
-24. Не используй общие пустые фразы: "индивидуальный подход", "высокое качество", "профессиональная команда", "широкий спектр услуг", "лучшие решения", если рядом нет конкретного объяснения. Пиши конкретно по бизнесу пользователя: что именно предлагается, для кого, какой результат получает посетитель.
+24. Нейро-слоп запрещён. Не используй общие пустые фразы: "индивидуальный подход", "высокое качество", "профессиональная команда", "широкий спектр услуг", "лучшие решения", "современные решения", "комплексный подход", "мы ценим каждого клиента", "быстро и качественно", "ваш надёжный партнёр".
+24.1. Каждый абзац должен содержать конкретику из запроса: предмет услуги/проекта, аудиторию, действие посетителя, результат, формат работы, состав предложения, место, время, цену/этапы, если они указаны.
+24.2. Если данных мало, не пиши рекламную воду. Лучше коротко сформулируй конкретный блок на основе того, что известно.
 25. Каждый блок должен отвечать на конкретный вопрос посетителя: что это, зачем это нужно, как воспользоваться, почему стоит обратиться, как связаться.
+26. Не пиши одинаковые заголовки и одинаковые описания в разных блоках. Каждый блок должен иметь свою роль.
+27. Не создавай общий блок с названием "Что доступно", "Что мы предлагаем", "Наши возможности", если пользователь прямо не просил такой блок. Вместо этого называй блок конкретно: "Тренировки для начинающих", "Меню шаурмы", "Ремонт iPhone", "Запись на консультацию" и т.п.
 """
 
     response = client.models.generate_content(
@@ -307,10 +320,10 @@ Email для контактов:
             raise ValueError("Gemini returned invalid JSON")
         site_json = json.loads(raw_text[start:end])
 
-    return normalize_generated_site(site_json, site_type, contact_email, contact_phone, button_count, company_name, description)
+    return normalize_generated_site(site_json, site_type, contact_email, contact_phone, button_count, company_name, description, design_preferences, desired_info)
 
 
-def normalize_generated_site(site_json: dict[str, Any], site_type: str, email: str, phone: str, button_count: int, company_name: str = "", description: str = "") -> dict[str, Any]:
+def normalize_generated_site(site_json: dict[str, Any], site_type: str, email: str, phone: str, button_count: int, company_name: str = "", description: str = "", design_preferences: str = "", desired_info: str = "") -> dict[str, Any]:
     site_json["siteType"] = "Многостраничный сайт" if "много" in site_type.lower() else "Лендинг"
     resolved_name = resolve_site_name(company_name, description, site_json.get("siteName"))
     site_json["siteName"] = resolved_name
@@ -366,13 +379,8 @@ def normalize_generated_site(site_json: dict[str, Any], site_type: str, email: s
             ],
         })
 
-    if pages and not any(is_service_like(sec) for sec in pages[0]["sections"] if isinstance(sec, dict)):
-        pages[0]["sections"].append({
-            "type": "text",
-            "anchorId": "services",
-            "title": "Что доступно",
-            "description": "Основная информация о проекте, услугах или предложении размещается в этом блоке.",
-        })
+    # Не добавляем запасной блок "Что доступно": он выглядел как нейро-слоп.
+    # Если Gemini не создал блок услуг/описания, оставляем структуру без общего пустого блока.
 
     if not any(any(isinstance(sec, dict) and sec.get("type") == "contact" for sec in page.get("sections", [])) for page in pages):
         pages[-1]["sections"].append({
@@ -428,7 +436,11 @@ def normalize_generated_site(site_json: dict[str, Any], site_type: str, email: s
     design.setdefault("textColor", "#201915")
     design.setdefault("surfaceColor", "#ffffff")
     design.setdefault("fontMood", "Чистый современный стиль")
-    site_json["design"] = sanitize_design(design)
+    inferred = infer_visual_design(description, design_preferences, desired_info)
+    for key, value in inferred.items():
+        design.setdefault(key, value)
+    site_json["design"] = sanitize_design(design, inferred)
+    reduce_neuro_slop(site_json, description, desired_info)
     return site_json
 
 
@@ -604,22 +616,95 @@ def default_button_text(index: int, goal: str) -> str:
     return variants[index % len(variants)]
 
 
-def sanitize_design(design: dict[str, Any]) -> dict[str, str]:
+BAD_SLOP_PHRASES = [
+    "индивидуальный подход", "высокое качество", "профессиональная команда",
+    "широкий спектр услуг", "лучшие решения", "современные решения",
+    "комплексный подход", "мы ценим каждого клиента", "быстро и качественно",
+    "ваш надёжный партнёр", "надежный партнёр", "надежный партнер"
+]
+
+
+def infer_visual_design(description: str = "", design_preferences: str = "", desired_info: str = "") -> dict[str, str]:
+    text = f"{description} {design_preferences} {desired_info}".lower()
+    if any(w in text for w in ["неон", "кибер", "it", "айти", "технолог", "стартап", "программ", "нейро"]):
+        return {"primaryColor": "#07111f", "secondaryColor": "#101a2e", "accentColor": "#38d5ff", "textColor": "#edf7ff", "surfaceColor": "#111b2f", "layoutVariant": "grid", "cardStyle": "glass", "heroVisual": "lines", "sectionShape": "sharp", "fontFamily": "mono", "density": "normal"}
+    if any(w in text for w in ["темн", "чёрн", "черн", "black", "dark"]):
+        return {"primaryColor": "#0e0f12", "secondaryColor": "#1b1c22", "accentColor": "#f0b35b", "textColor": "#f7f1e8", "surfaceColor": "#18191f", "layoutVariant": "split", "cardStyle": "outline", "heroVisual": "panels", "sectionShape": "sharp", "fontFamily": "sans", "density": "normal"}
+    if any(w in text for w in ["кафе", "кофе", "ресторан", "еда", "шаурм", "пекар", "бар"]):
+        return {"primaryColor": "#3b2418", "secondaryColor": "#8b5a35", "accentColor": "#f2c078", "textColor": "#fff6e8", "surfaceColor": "#4b2e1f", "layoutVariant": "calm", "cardStyle": "raised", "heroVisual": "badges", "sectionShape": "rounded", "fontFamily": "serif", "density": "air"}
+    if any(w in text for w in ["салон", "красот", "beauty", "космет", "стилист", "маник", "визаж"]):
+        return {"primaryColor": "#fff3f6", "secondaryColor": "#f5d7df", "accentColor": "#a84f68", "textColor": "#2c1820", "surfaceColor": "#ffffff", "layoutVariant": "centered", "cardStyle": "glass", "heroVisual": "badges", "sectionShape": "pill", "fontFamily": "display", "density": "air"}
+    if any(w in text for w in ["йога", "природ", "эко", "спорт", "фитнес", "здоров", "массаж"]):
+        return {"primaryColor": "#eaf2df", "secondaryColor": "#c7d8b6", "accentColor": "#557a46", "textColor": "#172315", "surfaceColor": "#f8fbf2", "layoutVariant": "calm", "cardStyle": "minimal", "heroVisual": "stats", "sectionShape": "rounded", "fontFamily": "sans", "density": "air"}
+    if any(w in text for w in ["портфолио", "дизайн", "фото", "худож", "архитект", "творч"]):
+        return {"primaryColor": "#f2eee7", "secondaryColor": "#d8d0c4", "accentColor": "#111111", "textColor": "#171717", "surfaceColor": "#fffaf1", "layoutVariant": "editorial", "cardStyle": "minimal", "heroVisual": "none", "sectionShape": "asymmetric", "fontFamily": "serif", "density": "air"}
+    if any(w in text for w in ["мероприят", "концерт", "фестиваль", "ивент", "событ", "лекци", "форум"]):
+        return {"primaryColor": "#ffefe0", "secondaryColor": "#ff7a1a", "accentColor": "#101010", "textColor": "#111111", "surfaceColor": "#fff7ed", "layoutVariant": "brutal", "cardStyle": "outline", "heroVisual": "stats", "sectionShape": "sharp", "fontFamily": "display", "density": "compact"}
+    return {"primaryColor": "#f3efe7", "secondaryColor": "#ded6c8", "accentColor": "#365f7d", "textColor": "#171b1f", "surfaceColor": "#fffaf2", "layoutVariant": "split", "cardStyle": "solid", "heroVisual": "panels", "sectionShape": "rounded", "fontFamily": "sans", "density": "normal"}
+
+
+def sanitize_design(design: dict[str, Any], inferred: dict[str, str] | None = None) -> dict[str, str]:
+    inferred = inferred or infer_visual_design()
+
     def color(value: Any, fallback: str) -> str:
         value = str(value or "").strip()
         return value if re.fullmatch(r"#[0-9a-fA-F]{6}", value) else fallback
 
-    return {
+    def enum(value: Any, allowed: set[str], fallback: str) -> str:
+        value = str(value or "").strip().lower()
+        return value if value in allowed else fallback
+
+    result = {
         "styleName": str(design.get("styleName") or "Индивидуальный стиль")[:80],
         "background": str(design.get("background") or "Фон подобран по проекту")[:220],
         "layoutReason": str(design.get("layoutReason") or "Структура выбрана по описанию пользователя")[:300],
-        "primaryColor": color(design.get("primaryColor"), "#f6efe7"),
-        "secondaryColor": color(design.get("secondaryColor"), "#fffaf3"),
-        "accentColor": color(design.get("accentColor"), "#7c4a2d"),
-        "textColor": color(design.get("textColor"), "#201915"),
-        "surfaceColor": color(design.get("surfaceColor"), "#ffffff"),
+        "primaryColor": color(design.get("primaryColor"), inferred["primaryColor"]),
+        "secondaryColor": color(design.get("secondaryColor"), inferred["secondaryColor"]),
+        "accentColor": color(design.get("accentColor"), inferred["accentColor"]),
+        "textColor": color(design.get("textColor"), inferred["textColor"]),
+        "surfaceColor": color(design.get("surfaceColor"), inferred["surfaceColor"]),
         "fontMood": str(design.get("fontMood") or "Чистый современный стиль")[:120],
+        "layoutVariant": enum(design.get("layoutVariant"), {"split", "centered", "editorial", "grid", "brutal", "calm"}, inferred["layoutVariant"]),
+        "cardStyle": enum(design.get("cardStyle"), {"solid", "outline", "glass", "minimal", "raised"}, inferred["cardStyle"]),
+        "heroVisual": enum(design.get("heroVisual"), {"panels", "badges", "stats", "lines", "none"}, inferred["heroVisual"]),
+        "sectionShape": enum(design.get("sectionShape"), {"rounded", "sharp", "pill", "asymmetric"}, inferred["sectionShape"]),
+        "fontFamily": enum(design.get("fontFamily"), {"serif", "sans", "mono", "display"}, inferred["fontFamily"]),
+        "density": enum(design.get("density"), {"air", "normal", "compact"}, inferred["density"]),
     }
+
+    # Если ИИ вернул почти белую палитру без явного запроса на светлый стиль, берём тематическую палитру.
+    too_white = result["primaryColor"].lower() in {"#ffffff", "#fffaf3", "#f6efe7", "#f7f7f7"} and result["secondaryColor"].lower() in {"#ffffff", "#fffaf3", "#f6efe7", "#f7f7f7"}
+    if too_white:
+        for key in ["primaryColor", "secondaryColor", "accentColor", "textColor", "surfaceColor"]:
+            result[key] = inferred[key]
+    return result
+
+
+def is_slop_text(text: str) -> bool:
+    low = (text or "").lower()
+    return any(phrase in low for phrase in BAD_SLOP_PHRASES)
+
+
+def reduce_neuro_slop(site_json: dict[str, Any], description: str = "", desired_info: str = "") -> None:
+    source = " ".join(x.strip() for x in [description, desired_info] if x and x.strip())
+    source = source[:260] if source else "проект пользователя"
+    for page in site_json.get("pages", []):
+        if not isinstance(page, dict):
+            continue
+        for section in page.get("sections", []):
+            if not isinstance(section, dict):
+                continue
+            if is_slop_text(str(section.get("description", ""))):
+                title = str(section.get("title") or "Раздел")
+                section["description"] = f"{title}: здесь указана конкретная информация по запросу пользователя — {source}."
+            if is_slop_text(str(section.get("subtitle", ""))):
+                section["subtitle"] = source
+            items = section.get("items")
+            if isinstance(items, list):
+                for item in items:
+                    if isinstance(item, dict) and is_slop_text(str(item.get("description", ""))):
+                        item_title = str(item.get("title") or "Пункт")
+                        item["description"] = f"{item_title}: пункт связан с запросом пользователя — {source}."
 
 
 def resolve_site_name(company_name: str | None, description: str, ai_name: Any) -> str:
@@ -685,17 +770,17 @@ def generate_mock_site(description: str, site_type: str, goal: str, company_name
         "sections": [
             {"type": "hero", "anchorId": "home", "title": title, "subtitle": description[:280], "buttons": []},
             {"type": "features", "anchorId": "features", "title": features_title, "items": [
-                {"title": "Информация по запросу", "description": "На сайте выделены именно те разделы, которые пользователь указал в описании."},
-                {"title": "Переходы по смыслу", "description": "Кнопки ведут к услугам, деталям проекта или контактам, а не в один общий блок."},
-                {"title": "Контакт без регистрации", "description": "Телефон и email размещаются в понятном контактном разделе."},
+                {"title": "Что предлагает проект", "description": (desired_info or description)[:180]},
+                {"title": "Для кого это сделано", "description": "Содержание сайта собирается вокруг аудитории и задачи, которые указаны в описании проекта."},
+                {"title": "Как связаться", "description": f"Посетитель может перейти к контактам: {contact_phone}, {contact_email}."},
             ]},
-            {"type": "text", "anchorId": "services", "title": text_title, "description": desired_info or "ИИ подобрал базовые блоки по описанию проекта."},
+            {"type": "text", "anchorId": "details", "title": text_title, "description": desired_info or description[:260]},
             {"type": "contact", "anchorId": "contacts", "title": "Контакты", "phone": contact_phone, "email": contact_email, "address": "Адрес будет добавлен позже"},
         ],
     }]
 
     if is_multi:
-        pages.append({"title": "Услуги", "slug": "/uslugi", "type": "services", "sections": [{"type": "text", "anchorId": "services-page", "title": "Услуги", "description": desired_info or "Описание услуг будет дополнено."}]})
+        pages.append({"title": "Услуги", "slug": "/uslugi", "type": "services", "sections": [{"type": "text", "anchorId": "services-page", "title": "Услуги", "description": desired_info or description[:300]}]})
         pages.append({"title": "Контакты", "slug": "/kontakty", "type": "contacts", "sections": [{"type": "contact", "anchorId": "contacts", "title": "Контакты", "phone": contact_phone, "email": contact_email, "address": "Адрес будет добавлен позже"}]})
 
     site_json = {
@@ -712,10 +797,16 @@ def generate_mock_site(description: str, site_type: str, goal: str, company_name
             "textColor": "#201915",
             "surfaceColor": "#ffffff",
             "fontMood": "Чистый современный стиль",
+            "layoutVariant": "calm",
+            "cardStyle": "raised",
+            "heroVisual": "panels",
+            "sectionShape": "rounded",
+            "fontFamily": "sans",
+            "density": "normal",
         },
         "pages": pages,
     }
-    return normalize_generated_site(site_json, site_type, contact_email, contact_phone, button_count, company_name, description)
+    return normalize_generated_site(site_json, site_type, contact_email, contact_phone, button_count, company_name, description, design_preferences, desired_info)
 
 
 def validate_site_json(site_json: dict[str, Any]) -> None:
